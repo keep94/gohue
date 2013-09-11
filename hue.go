@@ -23,6 +23,19 @@ const (
   Dim = uint8(0)
 )
 
+var (
+  // Pointer to true
+  TruePtr = &trueVal
+
+  // Pointer to false
+  FalsePtr = &falseVal
+)
+
+var (
+  trueVal = true
+  falseVal = false
+)  
+
 const (
   maxu16 = float64(10000.0)
 )
