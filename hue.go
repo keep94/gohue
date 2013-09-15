@@ -10,9 +10,11 @@ import (
   "bytes"
   "encoding/json"
   "fmt"
+  "github.com/keep94/tasks"
   "io"
   "net/http"
   "net/url"
+  "time"
 )
 
 const (
@@ -52,7 +54,11 @@ type Color struct {
 // in the color XY space; brightness is the brightness where 255 is brightest
 // and 0 is dimmest.
 func NewColor(x, y float64, brightness uint8) Color {
-  return Color{x: uint16(x * maxu16), y: uint16(y * maxu16), bri: brightness}
+  return Color{x: uint16(x * maxu16 + 0.5), y: uint16(y * maxu16 + 0.5), bri: brightness}
+}
+
+func (c Color) String() string {
+  return fmt.Sprintf("(%.4f, %.4f)", c.X(), c.Y())
 }
 
 // X returns the X value of this Color.
@@ -147,6 +153,84 @@ func (c *Context) lightUrl(id int) (*url.URL, error) {
 
 func (c *Context) allUrl() (*url.URL, error) {
   return url.Parse(fmt.Sprintf("http://%s/api/%s/groups/0/action", c.IpAddress, c.UserId))
+}
+
+// ColorDuration specifies the color a light should be a certain duration
+// into a transition.
+type ColorDuration struct {
+
+  // The color the light should be.
+  C Color
+
+  // The Duration into the transition.
+  D time.Duration
+}
+
+// Interface Setter sets the properties of a light. lightId is the ID of the
+// light to set. 0 means all lights.
+type Setter interface {
+  Set(lightId int, properties *LightProperties) (response []byte, err error)
+}
+
+// Transition represents a color transition on a particular light bulb.
+type Transition struct {
+
+  // The light bulb id. 0 means all lights.
+  LightId int
+
+  // The colors certain durations into the transition
+  Cds []ColorDuration
+
+  // Light color is refreshed this often.
+  Refresh time.Duration
+
+  // If true, light is turned on for the first color.
+  On bool
+}
+
+// AsTask returns this Transition as a task. setter is what changes the
+// lightbulb.
+func (t *Transition) AsTask(setter Setter) tasks.Task {
+  return tasks.TaskFunc(func(e *tasks.Execution) {
+    t.run(setter, e)
+  })
+}
+
+func (t *Transition) run(setter Setter, e *tasks.Execution) {
+  if len(t.Cds) < 2 || t.Cds[0].D != 0 {
+    panic("ColorDuration array must have at least 2 elements and D of first element must be 0.")
+  }
+  startTime := e.Now()
+  var currentD time.Duration
+  var properties LightProperties
+  if t.On {
+    properties.On = TruePtr
+  }
+  idx := 1
+  for idx < len(t.Cds) {
+    if currentD > t.Cds[idx].D {
+      idx++
+      continue
+    }
+    acolor := t.Cds[idx - 1].C.Blend(
+        t.Cds[idx].C,
+        float64(currentD - t.Cds[idx - 1].D) / float64(t.Cds[idx].D - t.Cds[idx - 1].D))
+    properties.C = &acolor
+    setter.Set(t.LightId, &properties)
+    properties.On = nil
+
+    // If we have already reached the end of the transition, just return
+    // immediately.
+    if currentD == t.Cds[len(t.Cds) - 1].D {
+      return
+    }
+    if !e.Sleep(t.Refresh) {
+      return
+    }
+    currentD = e.Now().Sub(startTime) 
+  }
+  properties.C = &t.Cds[len(t.Cds) - 1].C
+  setter.Set(t.LightId, &properties)
 }
 
 type simpleReadCloser struct {
