@@ -19,16 +19,17 @@ var (
 
 func TestTransition(t *testing.T) {
   transition := gohue.Transition{
-      LightId: 2,
-      Cds: []gohue.ColorDuration{
-          {C: gohue.NewColor(0.2, 0.1, 0), D: 0},
-          {C: gohue.NewColor(0.3, 0.3, 30), D: 1000},
-          {C: gohue.NewColor(0.9, 0.9, 100), D: 1000},
-          {C: gohue.NewColor(0.8, 0.7, 100), D: 1000},
-          {C: gohue.NewColor(0.2, 0.4, 10), D: 1750},
-          {C: gohue.NewColor(0.29, 0.46, 22), D: 2500}},
-      Refresh: 500,
-      On: true}
+      Id: 2,
+      G: &gohue.Gradient {
+          Cds: []gohue.ColorDuration{
+              {C: gohue.NewColor(0.2, 0.1, 0), D: 0},
+              {C: gohue.NewColor(0.3, 0.3, 30), D: 1000},
+              {C: gohue.NewColor(0.9, 0.9, 100), D: 1000},
+              {C: gohue.NewColor(0.8, 0.7, 100), D: 1000},
+              {C: gohue.NewColor(0.2, 0.4, 10), D: 1750},
+              {C: gohue.NewColor(0.29, 0.46, 22), D: 2500}},
+          Refresh: 500,
+          On: true}}
   expected := []request {
       {L: 2, C: gohue.NewColor(0.2, 0.1, 0), Cset: true, On: true, Onset: true, D: 0},
       {L: 2, C: gohue.NewColor(0.25, 0.2, 15), Cset: true, D: 500},
@@ -46,11 +47,12 @@ func TestTransition(t *testing.T) {
 
 func TestTransition2(t *testing.T) {
   transition := gohue.Transition{
-      LightId: 3,
-      Cds: []gohue.ColorDuration{
-          {C: gohue.NewColor(0.2, 0.1, 0), D: 0},
-          {C: gohue.NewColor(0.3, 0.3, 30), D: 1000}},
-      Refresh: 600}
+      Id: 3,
+      G: &gohue.Gradient{
+          Cds: []gohue.ColorDuration{
+              {C: gohue.NewColor(0.2, 0.1, 0), D: 0},
+              {C: gohue.NewColor(0.3, 0.3, 30), D: 1000}},
+          Refresh: 600}}
   expected := []request {
       {L: 3, C: gohue.NewColor(0.2, 0.1, 0), Cset: true, D: 0},
       {L: 3, C: gohue.NewColor(0.26, 0.22, 18), Cset: true, D: 600},

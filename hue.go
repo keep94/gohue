@@ -174,11 +174,8 @@ type Setter interface {
   Set(lightId int, properties *LightProperties) (response []byte, err error)
 }
 
-// Transition represents a color transition on a particular light bulb.
-type Transition struct {
-
-  // The light bulb id. 0 means all lights.
-  LightId int
+// Gradient represents a change in colors over time.
+type Gradient struct {
 
   // The colors certain durations into the transition
   Cds []ColorDuration
@@ -190,6 +187,16 @@ type Transition struct {
   On bool
 }
 
+// Transition represents a color transition on a particular light bulb.
+type Transition struct {
+
+  // The light bulb id. 0 means all lights.
+  Id int
+
+  // The Gradient
+  G *Gradient
+}
+
 // AsTask returns this Transition as a task. setter is what changes the
 // lightbulb.
 func (t *Transition) AsTask(setter Setter) tasks.Task {
@@ -199,40 +206,40 @@ func (t *Transition) AsTask(setter Setter) tasks.Task {
 }
 
 func (t *Transition) run(setter Setter, e *tasks.Execution) {
-  if len(t.Cds) < 2 || t.Cds[0].D != 0 {
+  if len(t.G.Cds) < 2 || t.G.Cds[0].D != 0 {
     panic("ColorDuration array must have at least 2 elements and D of first element must be 0.")
   }
   startTime := e.Now()
   var currentD time.Duration
   var properties LightProperties
-  if t.On {
+  if t.G.On {
     properties.On = TruePtr
   }
   idx := 1
-  for idx < len(t.Cds) {
-    if currentD > t.Cds[idx].D {
+  for idx < len(t.G.Cds) {
+    if currentD > t.G.Cds[idx].D {
       idx++
       continue
     }
-    acolor := t.Cds[idx - 1].C.Blend(
-        t.Cds[idx].C,
-        float64(currentD - t.Cds[idx - 1].D) / float64(t.Cds[idx].D - t.Cds[idx - 1].D))
+    acolor := t.G.Cds[idx - 1].C.Blend(
+        t.G.Cds[idx].C,
+        float64(currentD - t.G.Cds[idx - 1].D) / float64(t.G.Cds[idx].D - t.G.Cds[idx - 1].D))
     properties.C = &acolor
-    setter.Set(t.LightId, &properties)
+    setter.Set(t.Id, &properties)
     properties.On = nil
 
     // If we have already reached the end of the transition, just return
     // immediately.
-    if currentD == t.Cds[len(t.Cds) - 1].D {
+    if currentD == t.G.Cds[len(t.G.Cds) - 1].D {
       return
     }
-    if !e.Sleep(t.Refresh) {
+    if !e.Sleep(t.G.Refresh) {
       return
     }
     currentD = e.Now().Sub(startTime) 
   }
-  properties.C = &t.Cds[len(t.Cds) - 1].C
-  setter.Set(t.LightId, &properties)
+  properties.C = &t.G.Cds[len(t.G.Cds) - 1].C
+  setter.Set(t.Id, &properties)
 }
 
 // EachSunset represents recurring at sunset.
