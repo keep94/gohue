@@ -17,9 +17,9 @@ var (
   kNow = time.Date(2013, 9, 15, 14, 0, 0, 0, time.Local)
 )
 
-func TestTransition(t *testing.T) {
-  transition := gohue.Transition{
-      Id: 2,
+func TestAction(t *testing.T) {
+  transition := gohue.Action{
+      Lights: []int{2},
       G: &gohue.Gradient {
           Cds: []gohue.ColorDuration{
               {C: gohue.NewColor(0.2, 0.1, 0), D: 0},
@@ -28,8 +28,8 @@ func TestTransition(t *testing.T) {
               {C: gohue.NewColor(0.8, 0.7, 100), D: 1000},
               {C: gohue.NewColor(0.2, 0.4, 10), D: 1750},
               {C: gohue.NewColor(0.29, 0.46, 22), D: 2500}},
-          Refresh: 500,
-          On: true}}
+          Refresh: 500},
+      On: true}
   expected := []request {
       {L: 2, C: gohue.NewColor(0.2, 0.1, 0), Cset: true, On: true, Onset: true, D: 0},
       {L: 2, C: gohue.NewColor(0.25, 0.2, 15), Cset: true, D: 500},
@@ -39,27 +39,26 @@ func TestTransition(t *testing.T) {
       {L: 2, C: gohue.NewColor(0.29, 0.46, 22), Cset: true, D:2500}}
   clock := &tasks.ClockForTesting{kNow}
   context := &setterForTesting{clock: clock, now: kNow}
-  tasks.RunForTesting(transition.AsTask(context), clock)
+  tasks.RunForTesting(transition.AsTask(context, nil), clock)
   if !reflect.DeepEqual(expected, context.requests) {
     t.Errorf("Expected %v, got %v", expected, context.requests)
   }
 }
 
-func TestTransition2(t *testing.T) {
-  transition := gohue.Transition{
-      Id: 3,
+func TestAction2(t *testing.T) {
+  transition := gohue.Action{
       G: &gohue.Gradient{
           Cds: []gohue.ColorDuration{
               {C: gohue.NewColor(0.2, 0.1, 0), D: 0},
               {C: gohue.NewColor(0.3, 0.3, 30), D: 1000}},
           Refresh: 600}}
   expected := []request {
-      {L: 3, C: gohue.NewColor(0.2, 0.1, 0), Cset: true, D: 0},
-      {L: 3, C: gohue.NewColor(0.26, 0.22, 18), Cset: true, D: 600},
-      {L: 3, C: gohue.NewColor(0.3, 0.3, 30), Cset: true, D: 1200}}
+      {L: 0, C: gohue.NewColor(0.2, 0.1, 0), Cset: true, D: 0},
+      {L: 0, C: gohue.NewColor(0.26, 0.22, 18), Cset: true, D: 600},
+      {L: 0, C: gohue.NewColor(0.3, 0.3, 30), Cset: true, D: 1200}}
   clock := &tasks.ClockForTesting{kNow}
   context := &setterForTesting{clock: clock, now: kNow}
-  tasks.RunForTesting(transition.AsTask(context), clock)
+  tasks.RunForTesting(transition.AsTask(context, nil), clock)
   if !reflect.DeepEqual(expected, context.requests) {
     t.Errorf("Expected %v, got %v", expected, context.requests)
   }

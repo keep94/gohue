@@ -182,64 +182,73 @@ type Gradient struct {
 
   // Light color is refreshed this often.
   Refresh time.Duration
-
-  // If true, light is turned on for the first color.
-  On bool
 }
 
-// Transition represents a color transition on a particular light bulb.
-type Transition struct {
+// Action represents a color transition on a particular light bulb.
+type Action struct {
 
-  // The light bulb id. 0 means all lights.
-  Id int
+  // The light bulb ids. nil means all lights.
+  Lights []int
 
   // The Gradient
   G *Gradient
+
+  // If true, light is turned.
+  On bool
 }
 
 // AsTask returns this Transition as a task. setter is what changes the
-// lightbulb.
-func (t *Transition) AsTask(setter Setter) tasks.Task {
-  return tasks.TaskFunc(func(e *tasks.Execution) {
-    t.run(setter, e)
-  })
+// lightbulb. lights is the default set of lights nil means all lights.
+func (a *Action) AsTask(setter Setter, lights []int) tasks.Task {
+  if len(a.Lights) > 0 {
+    lights = a.Lights
+  }
+  if a.G != nil {
+    if len(a.G.Cds) == 0 || a.G.Cds[0].D != 0 {
+      panic("D of first ColorDuration element must be 0.")
+    }
+    return tasks.TaskFunc(func(e *tasks.Execution) {
+      a.run(setter, lights, e)
+    })
+  }
+  return nil
 }
 
-func (t *Transition) run(setter Setter, e *tasks.Execution) {
-  if len(t.G.Cds) < 2 || t.G.Cds[0].D != 0 {
-    panic("ColorDuration array must have at least 2 elements and D of first element must be 0.")
-  }
+func (a *Action) run(setter Setter, lights []int, e *tasks.Execution) {
   startTime := e.Now()
   var currentD time.Duration
   var properties LightProperties
-  if t.G.On {
+  if a.On {
     properties.On = TruePtr
   }
   idx := 1
-  for idx < len(t.G.Cds) {
-    if currentD > t.G.Cds[idx].D {
+  for idx < len(a.G.Cds) {
+    if currentD > a.G.Cds[idx].D {
       idx++
       continue
     }
-    acolor := t.G.Cds[idx - 1].C.Blend(
-        t.G.Cds[idx].C,
-        float64(currentD - t.G.Cds[idx - 1].D) / float64(t.G.Cds[idx].D - t.G.Cds[idx - 1].D))
+    acolor := a.G.Cds[idx - 1].C.Blend(
+        a.G.Cds[idx].C,
+        float64(currentD - a.G.Cds[idx - 1].D) / float64(a.G.Cds[idx].D - a.G.Cds[idx - 1].D))
     properties.C = &acolor
-    setter.Set(t.Id, &properties)
+    multiSet(e, setter, lights, &properties)
     properties.On = nil
 
     // If we have already reached the end of the transition, just return
     // immediately.
-    if currentD == t.G.Cds[len(t.G.Cds) - 1].D {
+    if currentD == a.G.Cds[len(a.G.Cds) - 1].D {
       return
     }
-    if !e.Sleep(t.G.Refresh) {
+    if e.Error() != nil {
+      return
+    }
+    if !e.Sleep(a.G.Refresh) {
       return
     }
     currentD = e.Now().Sub(startTime) 
   }
-  properties.C = &t.G.Cds[len(t.G.Cds) - 1].C
-  setter.Set(t.Id, &properties)
+  properties.C = &a.G.Cds[len(a.G.Cds) - 1].C
+  multiSet(e, setter, lights, &properties)
 }
 
 // EachSunset represents recurring at sunset.
@@ -299,5 +308,25 @@ type simpleReadCloser struct {
 
 func (s simpleReadCloser) Close() error {
   return nil
+}
+
+func multiSet(
+    e *tasks.Execution,
+    setter Setter,
+    lights []int,
+    properties *LightProperties) {
+  if len(lights) == 0 {
+    if _, err := setter.Set(0, properties); err != nil {
+      e.SetError(err)
+      return
+    }
+  } else {
+    for _, light := range lights {
+      if _, err := setter.Set(light, properties); err != nil {
+        e.SetError(err)
+        return
+      }
+    }
+  }
 }
 
