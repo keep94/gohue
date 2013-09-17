@@ -6,6 +6,7 @@
 package gohue_test
 
 import (
+  "errors"
   "github.com/keep94/gohue"
   "github.com/keep94/tasks"
   "reflect"
@@ -15,10 +16,11 @@ import (
 
 var (
   kNow = time.Date(2013, 9, 15, 14, 0, 0, 0, time.Local)
+  kSomeError = errors.New("gohue: someError.")
 )
 
 func TestGradient(t *testing.T) {
-  transition := gohue.Action{
+  action := gohue.Action{
       Lights: []int{2},
       G: &gohue.Gradient {
           Cds: []gohue.ColorDuration{
@@ -37,16 +39,11 @@ func TestGradient(t *testing.T) {
       {L: 2, C: gohue.NewColor(0.4, 0.5, 40), Cset: true, D: 1500},
       {L: 2, C: gohue.NewColor(0.23, 0.42, 14), Cset: true, D:2000},
       {L: 2, C: gohue.NewColor(0.29, 0.46, 22), Cset: true, D:2500}}
-  clock := &tasks.ClockForTesting{kNow}
-  context := &setterForTesting{clock: clock, now: kNow}
-  tasks.RunForTesting(transition.AsTask(context, nil), clock)
-  if !reflect.DeepEqual(expected, context.requests) {
-    t.Errorf("Expected %v, got %v", expected, context.requests)
-  }
+  verifyAction(t, expected, action)
 }
 
 func TestGradient2(t *testing.T) {
-  transition := gohue.Action{
+  action := gohue.Action{
       G: &gohue.Gradient{
           Cds: []gohue.ColorDuration{
               {C: gohue.NewColor(0.2, 0.1, 0), D: 0},
@@ -56,38 +53,23 @@ func TestGradient2(t *testing.T) {
       {L: 0, C: gohue.NewColor(0.2, 0.1, 0), Cset: true, D: 0},
       {L: 0, C: gohue.NewColor(0.26, 0.22, 18), Cset: true, D: 600},
       {L: 0, C: gohue.NewColor(0.3, 0.3, 30), Cset: true, D: 1200}}
-  clock := &tasks.ClockForTesting{kNow}
-  context := &setterForTesting{clock: clock, now: kNow}
-  tasks.RunForTesting(transition.AsTask(context, nil), clock)
-  if !reflect.DeepEqual(expected, context.requests) {
-    t.Errorf("Expected %v, got %v", expected, context.requests)
-  }
+  verifyAction(t, expected, action)
 }
 
 func TestOn(t *testing.T) {
-  transition := gohue.Action{On: true, C: gohue.NewColorPtr(0.4, 0.2, 80)}
+  action := gohue.Action{On: true, C: gohue.NewColorPtr(0.4, 0.2, 80)}
   expected := []request {{L: 0, C: gohue.NewColor(0.4, 0.2, 80), Cset: true, On: true, Onset: true, D: 0}}
-  clock := &tasks.ClockForTesting{kNow}
-  context := &setterForTesting{clock: clock, now: kNow}
-  tasks.RunForTesting(transition.AsTask(context, nil), clock)
-  if !reflect.DeepEqual(expected, context.requests) {
-    t.Errorf("Expected %v, got %v", expected, context.requests)
-  }
+  verifyAction(t, expected, action)
 }
 
 func TestOff(t *testing.T) {
-  transition := gohue.Action{On: true}
+  action := gohue.Action{On: true}
   expected := []request {{L: 0, On: true, Onset: true, D: 0}}
-  clock := &tasks.ClockForTesting{kNow}
-  context := &setterForTesting{clock: clock, now: kNow}
-  tasks.RunForTesting(transition.AsTask(context, nil), clock)
-  if !reflect.DeepEqual(expected, context.requests) {
-    t.Errorf("Expected %v, got %v", expected, context.requests)
-  }
+  verifyAction(t, expected, action)
 }
 
 func TestSeries(t *testing.T) {
-  transition := gohue.Action{
+  action := gohue.Action{
       Series: []*gohue.Action {
           {Lights: []int{2, 3}, On: true},
           {Sleep: 3000},
@@ -96,9 +78,20 @@ func TestSeries(t *testing.T) {
       {L: 2, On: true, Onset: true,  D: 0},
       {L: 3, On: true, Onset: true,  D: 0},
       {L: 0, On: false, Onset: true, D: 3000}}
+  verifyAction(t, expected, action)
+}
+
+func TestError(t *testing.T) {
+  action := gohue.Action{
+      Series: []*gohue.Action {
+          {Lights: []int{2, 3}, On: true},
+          {Sleep: 3000},
+          {Off: true}}}
+  expected := []request {
+      {L: 2, On: true, Onset: true,  D: 0}}
   clock := &tasks.ClockForTesting{kNow}
-  context := &setterForTesting{clock: clock, now: kNow}
-  tasks.RunForTesting(transition.AsTask(context, nil), clock)
+  context := &setterForTesting{err: kSomeError, clock: clock, now: kNow}
+  tasks.RunForTesting(action.AsTask(context, nil), clock)
   if !reflect.DeepEqual(expected, context.requests) {
     t.Errorf("Expected %v, got %v", expected, context.requests)
   }
@@ -140,6 +133,7 @@ type request struct {
 }
 
 type setterForTesting struct {
+  err error
   clock *tasks.ClockForTesting
   now time.Time
   requests []request
@@ -158,11 +152,23 @@ func (s *setterForTesting) Set(lightId int, p *gohue.LightProperties) (result []
   }
   r.D = s.clock.Current.Sub(s.now)
   s.requests = append(s.requests, r)
+  if s.err != nil {
+    err = s.err
+  }
   return
 }
 
 func verifyTime(t *testing.T, expected, actual time.Time) {
   if expected != actual {
     t.Errorf("Expected %v, got %v", expected, actual)
+  }
+}
+
+func verifyAction(t *testing.T, expected []request, action gohue.Action) {
+  clock := &tasks.ClockForTesting{kNow}
+  context := &setterForTesting{clock: clock, now: kNow}
+  tasks.RunForTesting(action.AsTask(context, nil), clock)
+  if !reflect.DeepEqual(expected, context.requests) {
+    t.Errorf("Expected %v, got %v", expected, context.requests)
   }
 }
