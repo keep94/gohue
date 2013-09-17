@@ -59,6 +59,11 @@ func NewColor(x, y float64, brightness uint8) Color {
   return Color{x: uint16(x * maxu16 + 0.5), y: uint16(y * maxu16 + 0.5), bri: brightness}
 }
 
+// NewColorPtr works like NewColor but returns a pointer.
+func NewColorPtr(x, y float64, brightness uint8) *Color {
+  return &Color{x: uint16(x * maxu16 + 0.5), y: uint16(y * maxu16 + 0.5), bri: brightness}
+}
+
 func (c Color) String() string {
   return fmt.Sprintf("(%.4f, %.4f)", c.X(), c.Y())
 }
@@ -184,7 +189,7 @@ type Gradient struct {
   Refresh time.Duration
 }
 
-// Action represents a color transition on a particular light bulb.
+// Action represents some action to the lights.
 type Action struct {
 
   // The light bulb ids. nil means all lights.
@@ -193,8 +198,20 @@ type Action struct {
   // The Gradient
   G *Gradient
 
-  // If true, light is turned.
+  // The single color
+  C *Color
+
+  // If true, light is turned on.
   On bool
+
+  // If true, light is turned off.
+  Off bool
+
+  // Sleep sleeps this duration
+  Sleep time.Duration
+
+  // Actions to be done in series
+  Series []*Action
 }
 
 // AsTask returns this Transition as a task. setter is what changes the
@@ -203,18 +220,43 @@ func (a *Action) AsTask(setter Setter, lights []int) tasks.Task {
   if len(a.Lights) > 0 {
     lights = a.Lights
   }
+  if len(a.Series) > 0 {
+    seriesTasks := make([]tasks.Task, len(a.Series))
+    for i := range seriesTasks {
+      seriesTasks[i] = a.Series[i].AsTask(setter, lights)
+    }
+    return asSeries(seriesTasks)
+  }
   if a.G != nil {
     if len(a.G.Cds) == 0 || a.G.Cds[0].D != 0 {
       panic("D of first ColorDuration element must be 0.")
     }
     return tasks.TaskFunc(func(e *tasks.Execution) {
-      a.run(setter, lights, e)
+      a.doGradient(setter, lights, e)
     })
   }
-  return nil
+  if a.C != nil || a.On || a.Off {
+    return tasks.TaskFunc(func(e *tasks.Execution) {
+      a.doOnOff(setter, lights, e)
+    })
+  }
+  return tasks.TaskFunc(func(e *tasks.Execution) {
+    e.Sleep(a.Sleep)
+  })
 }
 
-func (a *Action) run(setter Setter, lights []int, e *tasks.Execution) {
+func (a *Action) doOnOff(setter Setter, lights []int, e *tasks.Execution) {
+  var properties LightProperties
+  if a.On {
+    properties.On = TruePtr
+  } else {
+    properties.On = FalsePtr
+  }
+  properties.C = a.C
+  multiSet(e, setter, lights, &properties)
+}
+
+func (a *Action) doGradient(setter Setter, lights []int, e *tasks.Execution) {
   startTime := e.Now()
   var currentD time.Duration
   var properties LightProperties
@@ -330,3 +372,13 @@ func multiSet(
   }
 }
 
+func asSeries(ts []tasks.Task) tasks.Task {
+  return tasks.TaskFunc(func(e *tasks.Execution) {
+    for _, t := range ts {
+      t.Do(e)
+      if e.IsEnded() || e.Error() != nil {
+        return
+      }
+    }
+  })
+}

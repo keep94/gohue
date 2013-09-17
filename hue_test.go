@@ -17,7 +17,7 @@ var (
   kNow = time.Date(2013, 9, 15, 14, 0, 0, 0, time.Local)
 )
 
-func TestAction(t *testing.T) {
+func TestGradient(t *testing.T) {
   transition := gohue.Action{
       Lights: []int{2},
       G: &gohue.Gradient {
@@ -45,7 +45,7 @@ func TestAction(t *testing.T) {
   }
 }
 
-func TestAction2(t *testing.T) {
+func TestGradient2(t *testing.T) {
   transition := gohue.Action{
       G: &gohue.Gradient{
           Cds: []gohue.ColorDuration{
@@ -63,6 +63,47 @@ func TestAction2(t *testing.T) {
     t.Errorf("Expected %v, got %v", expected, context.requests)
   }
 }
+
+func TestOn(t *testing.T) {
+  transition := gohue.Action{On: true, C: gohue.NewColorPtr(0.4, 0.2, 80)}
+  expected := []request {{L: 0, C: gohue.NewColor(0.4, 0.2, 80), Cset: true, On: true, Onset: true, D: 0}}
+  clock := &tasks.ClockForTesting{kNow}
+  context := &setterForTesting{clock: clock, now: kNow}
+  tasks.RunForTesting(transition.AsTask(context, nil), clock)
+  if !reflect.DeepEqual(expected, context.requests) {
+    t.Errorf("Expected %v, got %v", expected, context.requests)
+  }
+}
+
+func TestOff(t *testing.T) {
+  transition := gohue.Action{On: true}
+  expected := []request {{L: 0, On: true, Onset: true, D: 0}}
+  clock := &tasks.ClockForTesting{kNow}
+  context := &setterForTesting{clock: clock, now: kNow}
+  tasks.RunForTesting(transition.AsTask(context, nil), clock)
+  if !reflect.DeepEqual(expected, context.requests) {
+    t.Errorf("Expected %v, got %v", expected, context.requests)
+  }
+}
+
+func TestSeries(t *testing.T) {
+  transition := gohue.Action{
+      Series: []*gohue.Action {
+          {Lights: []int{2, 3}, On: true},
+          {Sleep: 3000},
+          {Off: true}}}
+  expected := []request {
+      {L: 2, On: true, Onset: true,  D: 0},
+      {L: 3, On: true, Onset: true,  D: 0},
+      {L: 0, On: false, Onset: true, D: 3000}}
+  clock := &tasks.ClockForTesting{kNow}
+  context := &setterForTesting{clock: clock, now: kNow}
+  tasks.RunForTesting(transition.AsTask(context, nil), clock)
+  if !reflect.DeepEqual(expected, context.requests) {
+    t.Errorf("Expected %v, got %v", expected, context.requests)
+  }
+}
+  
 
 func TestEachSunset(t *testing.T) {
   now := time.Date(2013, 1, 7, 0, 0, 0, 0, time.Local)
