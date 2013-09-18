@@ -287,7 +287,7 @@ func (a *Action) doOnOff(setter Setter, lights []int, e *tasks.Execution) {
   var properties LightProperties
   if a.On {
     properties.On = TruePtr
-  } else {
+  } else if a.Off {
     properties.On = FalsePtr
   }
   properties.C = a.C

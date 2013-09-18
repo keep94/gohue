@@ -56,15 +56,27 @@ func TestGradient2(t *testing.T) {
   verifyAction(t, expected, action)
 }
 
-func TestOn(t *testing.T) {
+func TestOnColor(t *testing.T) {
   action := gohue.Action{On: true, C: gohue.NewColorPtr(0.4, 0.2, 80)}
   expected := []request {{L: 0, C: gohue.NewColor(0.4, 0.2, 80), Cset: true, On: true, Onset: true, D: 0}}
   verifyAction(t, expected, action)
 }
 
-func TestOff(t *testing.T) {
+func TestOn(t *testing.T) {
   action := gohue.Action{On: true}
   expected := []request {{L: 0, On: true, Onset: true, D: 0}}
+  verifyAction(t, expected, action)
+}
+
+func TestOff(t *testing.T) {
+  action := gohue.Action{Off: true}
+  expected := []request {{L: 0, On: false, Onset: true, D: 0}}
+  verifyAction(t, expected, action)
+}
+
+func TestColorOnly(t *testing.T) {
+  action := gohue.Action{C: &gohue.Yellow}
+  expected := []request {{L: 0, C: gohue.Yellow, Cset: true, D: 0}}
   verifyAction(t, expected, action)
 }
 
