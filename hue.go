@@ -195,6 +195,9 @@ type Action struct {
   // The light bulb ids. nil means all lights.
   Lights []int
 
+  // Repeat this many times. 0 means do once.
+  Repeat int
+
   // The Gradient
   G *Gradient
 
@@ -220,6 +223,13 @@ type Action struct {
 // AsTask returns this Transition as a task. setter is what changes the
 // lightbulb. lights is the default set of lights nil means all lights.
 func (a *Action) AsTask(setter Setter, lights []int) tasks.Task {
+  if a.Repeat < 2 {
+    return a.asTask(setter, lights)
+  }
+  return tasks.RepeatingTask(a.asTask(setter, lights), a.Repeat)
+}
+
+func (a *Action) asTask(setter Setter, lights []int) tasks.Task {
   if len(a.Lights) > 0 {
     lights = a.Lights
   }

@@ -68,6 +68,15 @@ func TestOff(t *testing.T) {
   verifyAction(t, expected, action)
 }
 
+func TestRepeat(t *testing.T) {
+  action := gohue.Action{On: true, Repeat: 3}
+  expected := []request {
+      {L: 0, On: true, Onset: true, D: 0},
+      {L: 0, On: true, Onset: true, D: 0},
+      {L: 0, On: true, Onset: true, D: 0}}
+  verifyAction(t, expected, action)
+}
+
 func TestSeries(t *testing.T) {
   action := gohue.Action{
       Series: []*gohue.Action {
