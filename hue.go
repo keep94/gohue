@@ -36,6 +36,19 @@ var (
 )
 
 var (
+  Red = NewColor(0.675, 0.322, Bright)
+  Green = NewColor(0.4077, 0.5154, Bright)
+  Blue = NewColor(0.167, 0.04, Bright)
+  Yellow = Red.Blend(Green, 0.5)
+  Magenta = Blue.Blend(Red, 0.5)
+  Cyan = Blue.Blend(Green, 0.5)
+  Purple = NewColor(0.2522, 0.0882, Bright)
+  White = NewColor(0.3848, 0.3629, Bright)
+  Pink = NewColor(0.55, 0.3394, Bright)
+  Orange = Red.Blend(Yellow, 0.5)
+)
+
+var (
   trueVal = true
   falseVal = false
 )  
@@ -81,6 +94,11 @@ func (c Color) Y() float64 {
 // Brightness returns the brightness of this color.
 func (c Color) Brightness() uint8 {
   return c.bri
+}
+
+// WithBrightness returns a color like this one with specified brightness.
+func (c Color) WithBrightness(bri uint8) Color {
+  return Color{x: c.x, y: c.y, bri: bri}
 }
 
 // Blend blends this color with another color returning the blended Color.
