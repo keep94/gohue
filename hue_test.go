@@ -81,6 +81,21 @@ func TestSeries(t *testing.T) {
   verifyAction(t, expected, action)
 }
 
+func TestSeries2(t *testing.T) {
+  action := gohue.Action{
+      Lights: []int{1, 4},
+      Series: []*gohue.Action {
+          {On: true},
+          {Sleep: 3000},
+          {Off: true}}}
+  expected := []request {
+      {L: 1, On: true, Onset: true,  D: 0},
+      {L: 4, On: true, Onset: true,  D: 0},
+      {L: 1, On: false, Onset: true, D: 3000},
+      {L: 4, On: false, Onset: true, D: 3000}}
+  verifyAction(t, expected, action)
+}
+
 func TestError(t *testing.T) {
   action := gohue.Action{
       Series: []*gohue.Action {
@@ -91,13 +106,14 @@ func TestError(t *testing.T) {
       {L: 2, On: true, Onset: true,  D: 0}}
   clock := &tasks.ClockForTesting{kNow}
   context := &setterForTesting{err: kSomeError, clock: clock, now: kNow}
-  tasks.RunForTesting(action.AsTask(context, nil), clock)
+  if err := tasks.RunForTesting(action.AsTask(context, nil), clock); err != kSomeError {
+    t.Error("Expected to get kSomeError.")
+  }
   if !reflect.DeepEqual(expected, context.requests) {
     t.Errorf("Expected %v, got %v", expected, context.requests)
   }
 }
   
-
 func TestEachSunset(t *testing.T) {
   now := time.Date(2013, 1, 7, 0, 0, 0, 0, time.Local)
   r := &gohue.EachSunset{Lat: 40.0, Lon: -120.0}

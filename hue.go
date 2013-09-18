@@ -212,6 +212,9 @@ type Action struct {
 
   // Actions to be done in series
   Series []*Action
+
+  // Actions to be done in parallel
+  Parallel []*Action
 }
 
 // AsTask returns this Transition as a task. setter is what changes the
@@ -220,12 +223,19 @@ func (a *Action) AsTask(setter Setter, lights []int) tasks.Task {
   if len(a.Lights) > 0 {
     lights = a.Lights
   }
+  if len(a.Parallel) > 0 {
+    parallelTasks := make([]tasks.Task, len(a.Parallel))
+    for i := range parallelTasks {
+      parallelTasks[i] = a.Parallel[i].AsTask(setter, lights)
+    }
+    return tasks.ParallelTasks(parallelTasks...)
+  }
   if len(a.Series) > 0 {
     seriesTasks := make([]tasks.Task, len(a.Series))
     for i := range seriesTasks {
       seriesTasks[i] = a.Series[i].AsTask(setter, lights)
     }
-    return asSeries(seriesTasks)
+    return tasks.SeriesTasks(seriesTasks...)
   }
   if a.G != nil {
     if len(a.G.Cds) == 0 || a.G.Cds[0].D != 0 {
@@ -370,15 +380,4 @@ func multiSet(
       }
     }
   }
-}
-
-func asSeries(ts []tasks.Task) tasks.Task {
-  return tasks.TaskFunc(func(e *tasks.Execution) {
-    for _, t := range ts {
-      t.Do(e)
-      if e.IsEnded() || e.Error() != nil {
-        return
-      }
-    }
-  })
 }
