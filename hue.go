@@ -238,7 +238,19 @@ type Action struct {
   Parallel []*Action
 }
 
-// AsTask returns this Transition as a task. setter is what changes the
+// Interface HueTask represents a hue related task that must be bound with
+// a Context to be a complete task.
+type HueTask interface {
+  WithContext(context *Context) tasks.Task
+}
+
+// WithContext returns a task from this instance.
+// context represents a connection to the hue bridge.
+func (a *Action) WithContext(context *Context) tasks.Task {
+  return a.AsTask(context, nil)
+}
+
+// AsTask returns a Task from this instance. setter is what changes the
 // lightbulb. lights is the default set of lights nil means all lights.
 func (a *Action) AsTask(setter Setter, lights []int) tasks.Task {
   if a.Repeat < 2 {
