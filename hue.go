@@ -170,6 +170,7 @@ func (c *Context) Set(lightId int, properties *LightProperties) (response []byte
   return respBuffer.Bytes(), nil
 }
 
+// Get gets the properties of a light. lightId is the ID of the light.
 func (c *Context) Get(lightId int) (properties *LightProperties, err error) {
   var url *url.URL
   if url, err = c.getLightUrl(lightId); err != nil {
@@ -236,6 +237,13 @@ type ColorDuration struct {
 // light to set. 0 means all lights.
 type Setter interface {
   Set(lightId int, properties *LightProperties) (response []byte, err error)
+}
+
+// Interface GetterSetter supports both getting and setting the properties of
+// a light.
+type GetterSetter interface {
+  Setter
+  Get(lightId int) (properties *LightProperties, err error)
 }
 
 // Gradient represents a change in colors over time.
