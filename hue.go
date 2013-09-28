@@ -11,6 +11,7 @@ import (
   "encoding/json"
   "fmt"
   "github.com/keep94/gofunctional3/functional"
+  "github.com/keep94/gohue/json_structs"
   "github.com/keep94/sunrise"
   "github.com/keep94/tasks"
   "io"
@@ -78,7 +79,7 @@ func NewColorPtr(x, y float64, brightness uint8) *Color {
 }
 
 func (c Color) String() string {
-  return fmt.Sprintf("(%.4f, %.4f)", c.X(), c.Y())
+  return fmt.Sprintf("(%.4f, %.4f) Bri: %d", c.X(), c.Y(), c.bri)
 }
 
 // X returns the X value of this Color.
@@ -167,6 +168,46 @@ func (c *Context) Set(lightId int, properties *LightProperties) (response []byte
     return
   }
   return respBuffer.Bytes(), nil
+}
+
+func (c *Context) Get(lightId int) (properties *LightProperties, err error) {
+  var url *url.URL
+  if url, err = c.getLightUrl(lightId); err != nil {
+    return
+  }
+  request := &http.Request{
+      Method: "GET",
+      URL: url,
+  }
+  var client http.Client
+  var resp *http.Response
+  if resp, err = client.Do(request); err != nil {
+    return
+  }
+  defer resp.Body.Close()
+  jsonDecoder := json.NewDecoder(resp.Body)
+  var jsonProps json_structs.LightState
+  if err = jsonDecoder.Decode(&jsonProps); err != nil {
+    return
+  }
+  if jsonProps.State != nil && len(jsonProps.State.XY) == 2 {
+    state := jsonProps.State
+    var on *bool
+    if state.On {
+      on = TruePtr
+    } else {
+      on = FalsePtr
+    }
+    jsonColor := state.XY
+    properties = &LightProperties{
+        C: NewColorPtr(jsonColor[0], jsonColor[1], state.Bri),
+        On: on}
+  }
+  return
+}
+
+func (c *Context) getLightUrl(id int) (*url.URL, error) {
+  return url.Parse(fmt.Sprintf("http://%s/api/%s/lights/%d", c.IpAddress, c.UserId, id))
 }
 
 func (c *Context) lightUrl(id int) (*url.URL, error) {
