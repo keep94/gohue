@@ -239,13 +239,6 @@ type Setter interface {
   Set(lightId int, properties *LightProperties) (response []byte, err error)
 }
 
-// Interface GetterSetter supports both getting and setting the properties of
-// a light.
-type GetterSetter interface {
-  Setter
-  Get(lightId int) (properties *LightProperties, err error)
-}
-
 // Gradient represents a change in colors over time.
 type Gradient struct {
 
