@@ -281,15 +281,17 @@ type Action struct {
 }
 
 // Interface HueTask represents a hue related task that must be bound with
-// a Context to be a complete task.
+// a Context and a set of lights to be a complete task. If lights is empty,
+// it means the default set of lights for the HueTask.
 type HueTask interface {
-  WithContext(context *Context) tasks.Task
+  WithContext(context *Context, lights []int) tasks.Task
 }
 
 // WithContext returns a task from this instance.
-// context represents a connection to the hue bridge.
-func (a *Action) WithContext(context *Context) tasks.Task {
-  return a.AsTask(context, nil)
+// context represents a connection to the hue bridge. lights is the default
+// set of lights, nil means all lights.
+func (a *Action) WithContext(context *Context, lights []int) tasks.Task {
+  return a.AsTask(context, lights)
 }
 
 // AsTask returns a Task from this instance. setter is what changes the
