@@ -252,7 +252,7 @@ type Gradient struct {
 // Action represents some action to the lights.
 type Action struct {
 
-  // The light bulb ids. nil means all lights.
+  // The light bulb ids. empty means all lights.
   Lights []int
 
   // Repeat this many times. 0 means do once.
@@ -289,13 +289,13 @@ type HueTask interface {
 
 // WithContext returns a task from this instance.
 // context represents a connection to the hue bridge. lights is the default
-// set of lights, nil means all lights.
+// set of lights, empty means all lights.
 func (a *Action) WithContext(context *Context, lights []int) tasks.Task {
   return a.AsTask(context, lights)
 }
 
 // AsTask returns a Task from this instance. setter is what changes the
-// lightbulb. lights is the default set of lights nil means all lights.
+// lightbulb. lights is the default set of lights empty means all lights.
 func (a *Action) AsTask(setter Setter, lights []int) tasks.Task {
   if a.Repeat < 2 {
     return a.asTask(setter, lights)
