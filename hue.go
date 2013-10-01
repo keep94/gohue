@@ -280,18 +280,10 @@ type Action struct {
   Parallel []*Action
 }
 
-// Interface HueTask represents a hue related task that must be bound with
-// a Context and a set of lights to be a complete task. If lights is empty,
-// it means the default set of lights for the HueTask.
-type HueTask interface {
-  WithContext(context *Context, lights []int) tasks.Task
-}
-
-// WithContext returns a task from this instance.
-// context represents a connection to the hue bridge. lights is the default
-// set of lights, empty means all lights.
-func (a *Action) WithContext(context *Context, lights []int) tasks.Task {
-  return a.AsTask(context, lights)
+// Do runs this instance. Context is the connection to the hue bridge;
+// lights is the default set of lights, and empty means all lights.
+func (a *Action) Do(context *Context, lights []int, e *tasks.Execution) {
+  a.AsTask(context, lights).Do(e)
 }
 
 // AsTask returns a Task from this instance. setter is what changes the
