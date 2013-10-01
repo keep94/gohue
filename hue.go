@@ -280,19 +280,6 @@ type Action struct {
   Parallel []*Action
 }
 
-// Do runs this instance. Context is the connection to the hue bridge;
-// lights is the default set of lights, and empty means all lights.
-func (a *Action) Do(context *Context, lights []int, e *tasks.Execution) {
-  a.AsTask(context, lights).Do(e)
-}
-
-// DoWithSetter is just like Do, but it accepts a Setter instance
-// instead of a Context instance.
-func (a *Action) DoWithSetter(
-    setter Setter, lights []int, e *tasks.Execution) {
-  a.AsTask(setter, lights).Do(e)
-}
-
 // AsTask returns a Task from this instance. setter is what changes the
 // lightbulb. lights is the default set of lights empty means all lights.
 func (a *Action) AsTask(setter Setter, lights []int) tasks.Task {
