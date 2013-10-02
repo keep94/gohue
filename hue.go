@@ -252,7 +252,10 @@ type Gradient struct {
 // Action represents some action to the lights.
 type Action struct {
 
-  // The light bulb ids. empty means all lights.
+  // The light bulb ids. Empty means the default set of lights. For child
+  // actions, the default set of lights is the parent's set of lights;
+  // for top-level actions, the default set of lights are the light bulb
+  // ids passed to AsTask.
   Lights []int
 
   // Repeat this many times. 0 means do once.
