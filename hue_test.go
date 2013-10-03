@@ -135,31 +135,6 @@ func TestError(t *testing.T) {
   }
 }
   
-func TestEachSunset(t *testing.T) {
-  now := time.Date(2013, 1, 7, 0, 0, 0, 0, time.Local)
-  r := &gohue.EachSunset{Lat: 40.0, Lon: -120.0}
-  stream := r.ForTime(now)
-  var atime time.Time
-  stream.Next(&atime)
-  verifyTime(t, time.Date(2013, 1, 7, 16, 51, 59, 0, time.Local), atime)
-  stream.Next(&atime)
-  verifyTime(t, time.Date(2013, 1, 8, 16, 52, 57, 0, time.Local), atime)
-
-  r = &gohue.EachSunset{Lat: 40.0, Lon: -120.0, HourCap: 16, MinuteCap: 52}
-  stream = r.ForTime(now)
-  stream.Next(&atime)
-  verifyTime(t, time.Date(2013, 1, 7, 16, 51, 59, 0, time.Local), atime)
-  stream.Next(&atime)
-  verifyTime(t, time.Date(2013, 1, 8, 16, 52, 0, 0, time.Local), atime)
-
-  r = &gohue.EachSunset{Lat: 40.0, Lon: -120.0, HourCap: 16, MinuteCap: 51}
-  stream = r.ForTime(time.Date(2013, 1, 7, 16, 51, 0, 0, time.Local))
-  stream.Next(&atime)
-  verifyTime(t, time.Date(2013, 1, 8, 16, 51, 0, 0, time.Local), atime)
-  stream.Next(&atime)
-  verifyTime(t, time.Date(2013, 1, 9, 16, 51, 0, 0, time.Local), atime)
-}
-
 type request struct {
   L int
   C gohue.Color
@@ -193,12 +168,6 @@ func (s *setterForTesting) Set(lightId int, p *gohue.LightProperties) (result []
     err = s.err
   }
   return
-}
-
-func verifyTime(t *testing.T, expected, actual time.Time) {
-  if expected != actual {
-    t.Errorf("Expected %v, got %v", expected, actual)
-  }
 }
 
 func verifyAction(t *testing.T, expected []request, action gohue.Action) {

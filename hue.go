@@ -10,9 +10,7 @@ import (
   "bytes"
   "encoding/json"
   "fmt"
-  "github.com/keep94/gofunctional3/functional"
   "github.com/keep94/gohue/json_structs"
-  "github.com/keep94/sunrise"
   "github.com/keep94/tasks"
   "io"
   "net/http"
@@ -223,13 +221,13 @@ func (c *Context) allUrl() (*url.URL, error) {
 }
 
 // ColorDuration specifies the color a light should be a certain duration
-// into a transition.
+// into a gradient.
 type ColorDuration struct {
 
   // The color the light should be.
   C Color
 
-  // The Duration into the transition.
+  // The Duration into the gradient.
   D time.Duration
 }
 
@@ -242,7 +240,8 @@ type Setter interface {
 // Gradient represents a change in colors over time.
 type Gradient struct {
 
-  // The colors certain durations into the transition
+  // The desired color at certain durations into the gradient. The specified
+  // durations must be in increasing order.
   Cds []ColorDuration
 
   // Light color is refreshed this often.
@@ -359,7 +358,7 @@ func (a *Action) doGradient(setter Setter, lights []int, e *tasks.Execution) {
     multiSet(e, setter, lights, &properties)
     properties.On = nil
 
-    // If we have already reached the end of the transition, just return
+    // If we have already reached the end of the gradient, just return
     // immediately.
     if currentD == a.G.Cds[len(a.G.Cds) - 1].D {
       return
@@ -374,57 +373,6 @@ func (a *Action) doGradient(setter Setter, lights []int, e *tasks.Execution) {
   }
   properties.C = &a.G.Cds[len(a.G.Cds) - 1].C
   multiSet(e, setter, lights, &properties)
-}
-
-// EachSunset represents recurring at sunset.
-type EachSunset struct {
-
-  // Latitude in degrees north is positive
-  Lat float64
-
-  // Longitude in degrees east is positive.
-  Lon float64
-
-  // HourCap and MinuteCap together specify the latest time for sunset
-  // 0 for hour and minute means no limit.
-  HourCap int  // 0-23
-  MinuteCap int // 0-59
-}
-
-func (r *EachSunset) ForTime(t time.Time) functional.Stream {
-  s := &hueSunrise{hourCap: r.HourCap, minuteCap: r.MinuteCap}
-  s.Around(r.Lat, r.Lon, t)
-  if !s.Sunset().After(t) {
-    s.AddDays(1)
-  }
-  return s
-}
-
-type hueSunrise struct {
-  hourCap int
-  minuteCap int
-  sunrise.Sunrise
-}
-
-func (h *hueSunrise) Sunset() time.Time {
-  asunset := h.Sunrise.Sunset()
-  cap := 60 * h.hourCap + h.minuteCap
-  hms := 60 * asunset.Hour() + asunset.Minute()
-  if cap > 0 && hms >= cap {
-    return time.Date(asunset.Year(), asunset.Month(), asunset.Day(), h.hourCap, h.minuteCap, 0, 0, asunset.Location())
-  }
-  return asunset
-}
-
-func (h *hueSunrise) Next(ptr interface{}) error {
-  p := ptr.(*time.Time)
-  *p = h.Sunset()
-  h.AddDays(1)
-  return nil
-}
-
-func (h *hueSunrise) Close() error {
-  return nil
 }
 
 type simpleReadCloser struct {
