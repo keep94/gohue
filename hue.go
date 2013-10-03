@@ -191,16 +191,11 @@ func (c *Context) Get(lightId int) (properties *LightProperties, err error) {
   }
   if jsonProps.State != nil && len(jsonProps.State.XY) == 2 {
     state := jsonProps.State
-    var on *bool
-    if state.On {
-      on = TruePtr
-    } else {
-      on = FalsePtr
-    }
+    on := state.On
     jsonColor := state.XY
     properties = &LightProperties{
         C: NewColorPtr(jsonColor[0], jsonColor[1], state.Bri),
-        On: on}
+        On: &on}
   }
   return
 }
