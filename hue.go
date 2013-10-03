@@ -249,15 +249,19 @@ type Gradient struct {
 }
 
 // Action represents some action to the lights.
+// Callers should set exactly one of the
+// Parallel, Series, G, C, or Sleep fields. The other fields compliment
+// these fields.
 type Action struct {
 
   // The light bulb ids. Empty means the default set of lights. For child
   // actions, the default set of lights is the parent's set of lights;
   // for top-level actions, the default set of lights are the light bulb
-  // ids passed to AsTask.
+  // ids passed to AsTask. Lights applies to Parallel, Series, G, or C fields.
   Lights []int
 
-  // Repeat this many times. 0 means do once.
+  // Repeat this many times. 0 or negative means do once.
+  // May be used with Parallel, Series, G, C, or Sleep fields.
   Repeat int
 
   // The Gradient
@@ -266,10 +270,10 @@ type Action struct {
   // The single color
   C *Color
 
-  // If true, light is turned on.
+  // If true, light is turned on. May be used with G or C fields.
   On bool
 
-  // If true, light is turned off.
+  // If true, light is turned off. May be used with G or C fields.
   Off bool
 
   // Sleep sleeps this duration
