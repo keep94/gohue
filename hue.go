@@ -71,9 +71,9 @@ func NewColor(x, y float64, brightness uint8) Color {
   return Color{x: uint16(x * maxu16 + 0.5), y: uint16(y * maxu16 + 0.5), bri: brightness}
 }
 
-// NewColorPtr works like NewColor but returns a pointer.
-func NewColorPtr(x, y float64, brightness uint8) *Color {
-  return &Color{x: uint16(x * maxu16 + 0.5), y: uint16(y * maxu16 + 0.5), bri: brightness}
+// ColorPtr returns a pointer to the given color.
+func ColorPtr(c Color) *Color {
+  return &c
 }
 
 func (c Color) String() string {
@@ -194,7 +194,7 @@ func (c *Context) Get(lightId int) (properties *LightProperties, err error) {
     on := state.On
     jsonColor := state.XY
     properties = &LightProperties{
-        C: NewColorPtr(jsonColor[0], jsonColor[1], state.Bri),
+        C: ColorPtr(NewColor(jsonColor[0], jsonColor[1], state.Bri)),
         On: &on}
   }
   return

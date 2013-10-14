@@ -57,7 +57,8 @@ func TestGradient2(t *testing.T) {
 }
 
 func TestOnColor(t *testing.T) {
-  action := gohue.Action{On: true, C: gohue.NewColorPtr(0.4, 0.2, 80)}
+  action := gohue.Action{
+      On: true, C: gohue.ColorPtr(gohue.NewColor(0.4, 0.2, 80))}
   expected := []request {{L: 0, C: gohue.NewColor(0.4, 0.2, 80), Cset: true, On: true, Onset: true, D: 0}}
   verifyAction(t, expected, action)
 }
