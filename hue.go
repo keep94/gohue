@@ -46,6 +46,21 @@ const (
   maxu16 = float64(10000.0)
 )
 
+// Uint8Ptr returns a pointer to the given uint8
+func Uint8Ptr(u uint8) *uint8 {
+  return &u
+}
+
+// Uint16Ptr returns a pointer to the given uint16
+func Uint16Ptr(u uint16) *uint16 {
+  return &u
+}
+
+// BoolPtr returns a pointer to the given bool
+func BoolPtr(x bool) *bool {
+  return &x
+}
+
 // Color represents a particular color. Programs using Colors
 // should typically store and pass them as values, not pointers.
 type Color struct {
@@ -62,16 +77,6 @@ func NewColor(x, y float64) Color {
 // ColorPtr returns a pointer to the given color.
 func ColorPtr(c Color) *Color {
   return &c
-}
-
-// Uint8Ptr returns a pointer to the given uint8
-func Uint8Ptr(u uint8) *uint8 {
-  return &u
-}
-
-// BoolPtr returns a pointer to the given bool
-func BoolPtr(x bool) *bool {
-  return &x
 }
 
 func (c Color) String() string {
@@ -108,6 +113,11 @@ type LightProperties struct {
   // On is true if light is on or false if it is off. If nil,
   // it means leave the on/off state as is.
   On *bool
+
+  // The transition time in multiples of 100ms. See
+  // http://developers.meethue.com. Used only with Context.Set().
+  // Context.Get() does not populate
+  TransitionTime *uint16
 }
 
 // Context represents a connection with a hue bridge.
@@ -122,7 +132,8 @@ type Context struct {
 
 // Set sets the properties of a light. lightId is the ID of the light to set.
 // 0 means all lights.
-func (c *Context) Set(lightId int, properties *LightProperties) (response []byte, err error) {
+func (c *Context) Set(
+    lightId int, properties *LightProperties) (response []byte, err error) {
   jsonMap := make(map[string]interface{})
   if properties.C != nil {
     jsonMap["xy"] = []float64{properties.C.X(), properties.C.Y()}
@@ -132,6 +143,9 @@ func (c *Context) Set(lightId int, properties *LightProperties) (response []byte
   }
   if properties.On != nil {
     jsonMap["on"] = *properties.On
+  }
+  if properties.TransitionTime != nil {
+    jsonMap["transitiontime"] = *properties.TransitionTime
   }
   var reqBuffer []byte
   if reqBuffer, err = json.Marshal(jsonMap); err != nil {
@@ -271,6 +285,11 @@ type Action struct {
   // If true, light(s) are turned off.
   Off bool
 
+  // Transition time in multiples of 100ms.
+  // See http://developers.meethue.com. Right now it
+  // only works with the {C, Bri, On, Off} fields
+  TransitionTime *uint16
+
   // Sleep sleeps this duration
   Sleep time.Duration
 
@@ -335,6 +354,7 @@ func (a *Action) doOnOff(setter Setter, lights []int, e *tasks.Execution) {
   }
   properties.C = a.C
   properties.Bri = a.Bri
+  properties.TransitionTime = a.TransitionTime
   multiSet(e, setter, lights, &properties)
 }
 
