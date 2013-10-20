@@ -18,57 +18,45 @@ import (
   "time"
 )
 
-const (
-  // Bright represents the brightest setting
+var (
+  TrueVal = true
+  FalseVal = false
+
+  // Bright represents the brightest a light can be
   Bright = uint8(255)
 
-  // Dim represents the dimmest setting.
+  // Dim represents the dimmest a light can be.
   Dim = uint8(0)
 )
 
 var (
-  // Pointer to true
-  TruePtr = &trueVal
-
-  // Pointer to false
-  FalsePtr = &falseVal
-)
-
-var (
-  Red = NewColor(0.675, 0.322, Bright)
-  Green = NewColor(0.4077, 0.5154, Bright)
-  Blue = NewColor(0.167, 0.04, Bright)
+  Red = NewColor(0.675, 0.322)
+  Green = NewColor(0.4077, 0.5154)
+  Blue = NewColor(0.167, 0.04)
   Yellow = Red.Blend(Green, 0.5)
   Magenta = Blue.Blend(Red, 0.5)
   Cyan = Blue.Blend(Green, 0.5)
-  Purple = NewColor(0.2522, 0.0882, Bright)
-  White = NewColor(0.3848, 0.3629, Bright)
-  Pink = NewColor(0.55, 0.3394, Bright)
+  Purple = NewColor(0.2522, 0.0882)
+  White = NewColor(0.3848, 0.3629)
+  Pink = NewColor(0.55, 0.3394)
   Orange = Red.Blend(Yellow, 0.5)
 )
-
-var (
-  trueVal = true
-  falseVal = false
-)  
 
 const (
   maxu16 = float64(10000.0)
 )
 
-// Color represents a particular color and brightness. Programs using Colors
+// Color represents a particular color. Programs using Colors
 // should typically store and pass them as values, not pointers.
 type Color struct {
   x uint16
   y uint16
-  bri uint8
 }
 
 // NewColor returns a new Color. x and y are the coordinates of the color
-// in the color XY space; brightness is the brightness where 255 is brightest
-// and 0 is dimmest.
-func NewColor(x, y float64, brightness uint8) Color {
-  return Color{x: uint16(x * maxu16 + 0.5), y: uint16(y * maxu16 + 0.5), bri: brightness}
+// in the color XY space.
+func NewColor(x, y float64) Color {
+  return Color{x: uint16(x * maxu16 + 0.5), y: uint16(y * maxu16 + 0.5)}
 }
 
 // ColorPtr returns a pointer to the given color.
@@ -76,8 +64,18 @@ func ColorPtr(c Color) *Color {
   return &c
 }
 
+// Uint8Ptr returns a pointer to the given uint8
+func Uint8Ptr(u uint8) *uint8 {
+  return &u
+}
+
+// BoolPtr returns a pointer to the given bool
+func BoolPtr(x bool) *bool {
+  return &x
+}
+
 func (c Color) String() string {
-  return fmt.Sprintf("(%.4f, %.4f) Bri: %d", c.X(), c.Y(), c.bri)
+  return fmt.Sprintf("(%.4f, %.4f)", c.X(), c.Y())
 }
 
 // X returns the X value of this Color.
@@ -90,24 +88,13 @@ func (c Color) Y() float64 {
   return float64(c.y) / maxu16
 }
 
-// Brightness returns the brightness of this color.
-func (c Color) Brightness() uint8 {
-  return c.bri
-}
-
-// WithBrightness returns a color like this one with specified brightness.
-func (c Color) WithBrightness(bri uint8) Color {
-  return Color{x: c.x, y: c.y, bri: bri}
-}
-
 // Blend blends this color with another color returning the blended Color.
 // ratio=0 means use only this color; ratio=1 means use only the other color.
 func (c Color) Blend(other Color, ratio float64) Color {
   invratio := 1.0 - ratio
   return NewColor(
       c.X() * invratio + other.X() * ratio,
-      c.Y() * invratio + other.Y() * ratio,
-      uint8(float64(c.bri) * invratio + float64(other.bri) * ratio))
+      c.Y() * invratio + other.Y() * ratio)
 }
 
 // LightProperies represents the properties of a light.
@@ -115,6 +102,9 @@ type LightProperties struct {
   // C is the Color. nil means leave the color as-is
   C *Color
 
+  // Bri is the brightness. nil means leave brightness as-is.
+  Bri *uint8
+  
   // On is true if light is on or false if it is off. If nil,
   // it means leave the on/off state as is.
   On *bool
@@ -135,8 +125,10 @@ type Context struct {
 func (c *Context) Set(lightId int, properties *LightProperties) (response []byte, err error) {
   jsonMap := make(map[string]interface{})
   if properties.C != nil {
-    jsonMap["bri"] = properties.C.Brightness()
     jsonMap["xy"] = []float64{properties.C.X(), properties.C.Y()}
+  }
+  if properties.Bri != nil {
+    jsonMap["bri"] = *properties.Bri
   }
   if properties.On != nil {
     jsonMap["on"] = *properties.On
@@ -191,11 +183,11 @@ func (c *Context) Get(lightId int) (properties *LightProperties, err error) {
   }
   if jsonProps.State != nil && len(jsonProps.State.XY) == 2 {
     state := jsonProps.State
-    on := state.On
     jsonColor := state.XY
     properties = &LightProperties{
-        C: ColorPtr(NewColor(jsonColor[0], jsonColor[1], state.Bri)),
-        On: &on}
+        C: ColorPtr(NewColor(jsonColor[0], jsonColor[1])),
+        Bri: Uint8Ptr(state.Bri),
+        On: BoolPtr(state.On)}
   }
   return
 }
@@ -219,8 +211,12 @@ func (c *Context) allUrl() (*url.URL, error) {
 // into a gradient.
 type ColorDuration struct {
 
-  // The color the light should be.
-  C Color
+  // The color the light should be. nil menas color should be unchanged.
+  C *Color
+
+  // The brightness the light should be. nil means brightness should be
+  // unchanged.
+  Bri *uint8
 
   // The Duration into the gradient.
   D time.Duration
@@ -245,8 +241,9 @@ type Gradient struct {
 
 // Action represents some action to the lights.
 // Callers should set exactly one of the
-// Parallel, Series, G, C, On, Off, or Sleep fields. The one exception is that
-// On can be used with G or C. The other fields compliment these fields.
+// Parallel, Series, G, any subset of {C, Bri, On, Off}, or Sleep fields.
+// The one exception is that On can be used with G. The other
+// fields compliment these fields.
 type Action struct {
 
   // The light bulb ids. Empty means the default set of lights. For child
@@ -264,8 +261,11 @@ type Action struct {
   // The single color
   C *Color
 
-  // If true, light(s) are turned on. May be used along with G or C fields to
-  // ensure light(s) are on.
+  // The brightness.
+  Bri *uint8
+
+  // If true, light(s) are turned on. May be used along with G field
+  // to ensure light(s) are on.
   On bool
 
   // If true, light(s) are turned off.
@@ -316,7 +316,7 @@ func (a *Action) asTask(setter Setter, lights []int) tasks.Task {
       a.doGradient(setter, lights, e)
     })
   }
-  if a.C != nil || a.On || a.Off {
+  if a.C != nil || a.Bri != nil || a.On || a.Off {
     return tasks.TaskFunc(func(e *tasks.Execution) {
       a.doOnOff(setter, lights, e)
     })
@@ -329,11 +329,12 @@ func (a *Action) asTask(setter Setter, lights []int) tasks.Task {
 func (a *Action) doOnOff(setter Setter, lights []int, e *tasks.Execution) {
   var properties LightProperties
   if a.On {
-    properties.On = TruePtr
+    properties.On = &TrueVal
   } else if a.Off {
-    properties.On = FalsePtr
+    properties.On = &FalseVal
   }
   properties.C = a.C
+  properties.Bri = a.Bri
   multiSet(e, setter, lights, &properties)
 }
 
@@ -342,26 +343,24 @@ func (a *Action) doGradient(setter Setter, lights []int, e *tasks.Execution) {
   var currentD time.Duration
   var properties LightProperties
   if a.On {
-    properties.On = TruePtr
+    properties.On = &TrueVal
   }
   idx := 1
+  last := &a.G.Cds[len(a.G.Cds) - 1]
   for idx < len(a.G.Cds) {
-    if currentD > a.G.Cds[idx].D {
+    if currentD >= a.G.Cds[idx].D {
       idx++
       continue
     }
-    acolor := a.G.Cds[idx - 1].C.Blend(
-        a.G.Cds[idx].C,
-        float64(currentD - a.G.Cds[idx - 1].D) / float64(a.G.Cds[idx].D - a.G.Cds[idx - 1].D))
-    properties.C = &acolor
+    first := &a.G.Cds[idx - 1]
+    second := &a.G.Cds[idx]
+    ratio := float64(currentD - first.D) / float64(second.D - first.D)
+    acolor := maybeBlendColor(first.C, second.C, ratio)
+    aBrightness := maybeBlendBrightness(first.Bri, second.Bri, ratio)
+    properties.C = acolor
+    properties.Bri = aBrightness
     multiSet(e, setter, lights, &properties)
     properties.On = nil
-
-    // If we have already reached the end of the gradient, just return
-    // immediately.
-    if currentD == a.G.Cds[len(a.G.Cds) - 1].D {
-      return
-    }
     if e.Error() != nil {
       return
     }
@@ -370,7 +369,8 @@ func (a *Action) doGradient(setter Setter, lights []int, e *tasks.Execution) {
     }
     currentD = e.Now().Sub(startTime) 
   }
-  properties.C = &a.G.Cds[len(a.G.Cds) - 1].C
+  properties.C = last.C
+  properties.Bri = last.Bri
   multiSet(e, setter, lights, &properties)
 }
 
@@ -401,3 +401,18 @@ func multiSet(
     }
   }
 }
+
+func maybeBlendColor(first, second *Color, ratio float64) *Color {
+  if first != nil && second != nil {
+    return ColorPtr(first.Blend(*second, ratio))
+  }
+  return first
+}
+
+func maybeBlendBrightness(first, second *uint8, ratio float64) *uint8 {
+  if first != nil && second != nil {
+    return Uint8Ptr(uint8((1.0 - ratio) * float64(*first) + ratio * float64(*second) + 0.5))
+  }
+  return first
+}
+

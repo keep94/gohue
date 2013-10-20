@@ -24,21 +24,27 @@ func TestGradient(t *testing.T) {
       Lights: []int{2},
       G: &gohue.Gradient {
           Cds: []gohue.ColorDuration{
-              {C: gohue.NewColor(0.2, 0.1, 0), D: 0},
-              {C: gohue.NewColor(0.3, 0.3, 30), D: 1000},
-              {C: gohue.NewColor(0.9, 0.9, 100), D: 1000},
-              {C: gohue.NewColor(0.8, 0.7, 100), D: 1000},
-              {C: gohue.NewColor(0.2, 0.4, 10), D: 1750},
-              {C: gohue.NewColor(0.29, 0.46, 22), D: 2500}},
+              {C: gohue.ColorPtr(gohue.NewColor(0.2, 0.1)),
+               Bri: gohue.Uint8Ptr(0), D: 0},
+              {C: gohue.ColorPtr(gohue.NewColor(0.3, 0.3)),
+               Bri: gohue.Uint8Ptr(30), D: 1000},
+              {C: gohue.ColorPtr(gohue.NewColor(0.9, 0.9)),
+               Bri: gohue.Uint8Ptr(100), D: 1000},
+              {C: gohue.ColorPtr(gohue.NewColor(0.8, 0.7)),
+              Bri: gohue.Uint8Ptr(100),  D: 1000},
+              {C: gohue.ColorPtr(gohue.NewColor(0.2, 0.4)),
+               Bri: gohue.Uint8Ptr(10), D: 1750},
+              {C: gohue.ColorPtr(gohue.NewColor(0.29, 0.46)),
+               Bri: gohue.Uint8Ptr(22), D: 2500}},
           Refresh: 500},
       On: true}
   expected := []request {
-      {L: 2, C: gohue.NewColor(0.2, 0.1, 0), Cset: true, On: true, Onset: true, D: 0},
-      {L: 2, C: gohue.NewColor(0.25, 0.2, 15), Cset: true, D: 500},
-      {L: 2, C: gohue.NewColor(0.3, 0.3, 30), Cset: true, D: 1000},
-      {L: 2, C: gohue.NewColor(0.4, 0.5, 40), Cset: true, D: 1500},
-      {L: 2, C: gohue.NewColor(0.23, 0.42, 14), Cset: true, D:2000},
-      {L: 2, C: gohue.NewColor(0.29, 0.46, 22), Cset: true, D:2500}}
+      {L: 2, C: gohue.NewColor(0.2, 0.1), Cset: true, Briset: true, On: true, Onset: true, D: 0},
+      {L: 2, C: gohue.NewColor(0.25, 0.2), Cset: true, Bri: 15, Briset: true, D: 500},
+      {L: 2, C: gohue.NewColor(0.8, 0.7), Cset: true, Bri: 100, Briset: true, D: 1000},
+      {L: 2, C: gohue.NewColor(0.4, 0.5), Cset: true, Bri: 40, Briset: true, D: 1500},
+      {L: 2, C: gohue.NewColor(0.23, 0.42), Cset: true, Bri: 14, Briset: true, D:2000},
+      {L: 2, C: gohue.NewColor(0.29, 0.46), Cset: true, Bri: 22, Briset: true, D:2500}}
   verifyAction(t, expected, action)
 }
 
@@ -46,20 +52,50 @@ func TestGradient2(t *testing.T) {
   action := gohue.Action{
       G: &gohue.Gradient{
           Cds: []gohue.ColorDuration{
-              {C: gohue.NewColor(0.2, 0.1, 0), D: 0},
-              {C: gohue.NewColor(0.3, 0.3, 30), D: 1000}},
+              {C: gohue.ColorPtr(gohue.NewColor(0.2, 0.1)), D: 0},
+              {C: gohue.ColorPtr(gohue.NewColor(0.3, 0.3)), D: 1000}},
           Refresh: 600}}
   expected := []request {
-      {L: 0, C: gohue.NewColor(0.2, 0.1, 0), Cset: true, D: 0},
-      {L: 0, C: gohue.NewColor(0.26, 0.22, 18), Cset: true, D: 600},
-      {L: 0, C: gohue.NewColor(0.3, 0.3, 30), Cset: true, D: 1200}}
+      {L: 0, C: gohue.NewColor(0.2, 0.1), Cset: true, D: 0},
+      {L: 0, C: gohue.NewColor(0.26, 0.22), Cset: true, D: 600},
+      {L: 0, C: gohue.NewColor(0.3, 0.3), Cset: true, D: 1200}}
+  verifyAction(t, expected, action)
+}
+
+func TestGradient3(t *testing.T) {
+  action := gohue.Action{
+      G: &gohue.Gradient{
+          Cds: []gohue.ColorDuration{
+              {Bri: &gohue.Bright, D: 0},
+              {Bri: &gohue.Bright, C: &gohue.Red, D: 1000},
+              {C: &gohue.Red, D: 2000},
+              {Bri: &gohue.Dim, D: 3000},
+              {Bri: &gohue.Dim, D: 4000}},
+          Refresh: 500}}
+  expected := []request {
+      {L: 0, Bri: gohue.Bright, Briset: true, D: 0},
+      {L: 0, Bri: gohue.Bright, Briset: true, D: 500},
+      {L: 0, Bri: gohue.Bright, Briset: true, C: gohue.Red, Cset: true, D: 1000},
+      {L: 0, Bri: gohue.Bright, Briset: true, C: gohue.Red, Cset: true, D: 1500},
+      {L: 0, C: gohue.Red, Cset: true, D: 2000},
+      {L: 0, C: gohue.Red, Cset: true, D: 2500},
+      {L: 0, Bri: gohue.Dim, Briset: true, D: 3000},
+      {L: 0, Bri: gohue.Dim, Briset: true, D: 3500},
+      {L: 0, Bri: gohue.Dim, Briset: true, D: 4000}}
   verifyAction(t, expected, action)
 }
 
 func TestOnColor(t *testing.T) {
   action := gohue.Action{
-      On: true, C: gohue.ColorPtr(gohue.NewColor(0.4, 0.2, 80))}
-  expected := []request {{L: 0, C: gohue.NewColor(0.4, 0.2, 80), Cset: true, On: true, Onset: true, D: 0}}
+      On: true, C: gohue.ColorPtr(gohue.NewColor(0.4, 0.2))}
+  expected := []request {{L: 0, C: gohue.NewColor(0.4, 0.2), Cset: true, On: true, Onset: true, D: 0}}
+  verifyAction(t, expected, action)
+}
+
+func TestOnBrightness(t *testing.T) {
+  action := gohue.Action{
+      On: true, Bri: gohue.Uint8Ptr(135)}
+  expected := []request {{L: 0, Bri: 135, Briset: true, On: true, Onset: true, D: 0}}
   verifyAction(t, expected, action)
 }
 
@@ -140,6 +176,8 @@ type request struct {
   L int
   C gohue.Color
   Cset bool
+  Bri uint8
+  Briset bool
   On bool
   Onset bool
   D time.Duration
@@ -158,6 +196,10 @@ func (s *setterForTesting) Set(lightId int, p *gohue.LightProperties) (result []
   if p.C != nil {
     r.C = *p.C
     r.Cset = true
+  }
+  if p.Bri != nil {
+    r.Bri = *p.Bri
+    r.Briset = true
   }
   if p.On != nil {
     r.On = *p.On
