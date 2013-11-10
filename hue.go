@@ -11,6 +11,7 @@ import (
   "encoding/json"
   "fmt"
   "github.com/keep94/gohue/json_structs"
+  "github.com/keep94/maybe"
   "github.com/keep94/tasks"
   "io"
   "net/http"
@@ -19,9 +20,6 @@ import (
 )
 
 var (
-  TrueVal = true
-  FalseVal = false
-
   // Bright represents the brightest a light can be
   Bright = uint8(255)
 
@@ -46,21 +44,6 @@ const (
   maxu16 = float64(10000.0)
 )
 
-// Uint8Ptr returns a pointer to the given uint8
-func Uint8Ptr(u uint8) *uint8 {
-  return &u
-}
-
-// Uint16Ptr returns a pointer to the given uint16
-func Uint16Ptr(u uint16) *uint16 {
-  return &u
-}
-
-// BoolPtr returns a pointer to the given bool
-func BoolPtr(x bool) *bool {
-  return &x
-}
-
 // Color represents a particular color. Programs using Colors
 // should typically store and pass them as values, not pointers.
 type Color struct {
@@ -72,11 +55,6 @@ type Color struct {
 // in the color XY space.
 func NewColor(x, y float64) Color {
   return Color{x: uint16(x * maxu16 + 0.5), y: uint16(y * maxu16 + 0.5)}
-}
-
-// ColorPtr returns a pointer to the given color.
-func ColorPtr(c Color) *Color {
-  return &c
 }
 
 func (c Color) String() string {
@@ -102,22 +80,53 @@ func (c Color) Blend(other Color, ratio float64) Color {
       c.Y() * invratio + other.Y() * ratio)
 }
 
+// MaybeColor instances represent a Color or nothing. The zero value is nothing.
+type MaybeColor struct {
+  Color
+  // True if this instance represents a Color or false otherwise.
+  Valid bool
+}
+
+// NewMaybecolor returns a new instance that represents c.
+func NewMaybeColor(c Color) MaybeColor {
+  return MaybeColor{Color: c, Valid: true}
+}
+
+// Set makes this instance represent c.
+func (m *MaybeColor) Set(c Color) {
+  m.Color = c
+  m.Valid = true
+}
+
+// Clear makes this instance represent nothing.
+func (m *MaybeColor) Clear() {
+  m.Color = Color{}
+  m.Valid = false
+}
+
+func (m MaybeColor) String() string {
+  if (!m.Valid) {
+    return "Nothing"
+  }
+  return fmt.Sprintf("Just %s", m.Color)
+}
+
 // LightProperies represents the properties of a light.
 type LightProperties struct {
-  // C is the Color. nil means leave the color as-is
-  C *Color
+  // C is the Color. Nothing means leave color as-is.
+  C MaybeColor
 
-  // Bri is the brightness. nil means leave brightness as-is.
-  Bri *uint8
+  // Bri is the brightness. nothing means leave brightness as-is.
+  Bri maybe.Uint8
   
-  // On is true if light is on or false if it is off. If nil,
+  // On is true if light is on or false if it is off. If nothing,
   // it means leave the on/off state as is.
-  On *bool
+  On maybe.Bool
 
   // The transition time in multiples of 100ms. See
   // http://developers.meethue.com. Used only with Context.Set().
   // Context.Get() does not populate
-  TransitionTime *uint16
+  TransitionTime maybe.Uint16
 }
 
 // Context represents a connection with a hue bridge.
@@ -135,17 +144,18 @@ type Context struct {
 func (c *Context) Set(
     lightId int, properties *LightProperties) (response []byte, err error) {
   jsonMap := make(map[string]interface{})
-  if properties.C != nil {
-    jsonMap["xy"] = []float64{properties.C.X(), properties.C.Y()}
+  if properties.C.Valid {
+    jsonMap["xy"] = []float64{
+        properties.C.X(), properties.C.Y()}
   }
-  if properties.Bri != nil {
-    jsonMap["bri"] = *properties.Bri
+  if properties.Bri.Valid {
+    jsonMap["bri"] = properties.Bri.Value
   }
-  if properties.On != nil {
-    jsonMap["on"] = *properties.On
+  if properties.On.Valid {
+    jsonMap["on"] = properties.On.Value
   }
-  if properties.TransitionTime != nil {
-    jsonMap["transitiontime"] = *properties.TransitionTime
+  if properties.TransitionTime.Valid {
+    jsonMap["transitiontime"] = properties.TransitionTime.Value
   }
   var reqBuffer []byte
   if reqBuffer, err = json.Marshal(jsonMap); err != nil {
@@ -199,9 +209,9 @@ func (c *Context) Get(lightId int) (properties *LightProperties, err error) {
     state := jsonProps.State
     jsonColor := state.XY
     properties = &LightProperties{
-        C: ColorPtr(NewColor(jsonColor[0], jsonColor[1])),
-        Bri: Uint8Ptr(state.Bri),
-        On: BoolPtr(state.On)}
+        C: NewMaybeColor(NewColor(jsonColor[0], jsonColor[1])),
+        Bri: maybe.NewUint8(state.Bri),
+        On: maybe.NewBool(state.On)}
   }
   return
 }
@@ -225,12 +235,12 @@ func (c *Context) allUrl() (*url.URL, error) {
 // into a gradient.
 type ColorDuration struct {
 
-  // The color the light should be. nil menas color should be unchanged.
-  C *Color
+  // The color the light should be. nothing menas color should be unchanged.
+  C MaybeColor
 
-  // The brightness the light should be. nil means brightness should be
+  // The brightness the light should be. nothing means brightness should be
   // unchanged.
-  Bri *uint8
+  Bri maybe.Uint8
 
   // The Duration into the gradient.
   D time.Duration
@@ -273,10 +283,10 @@ type Action struct {
   G *Gradient
 
   // The single color
-  C *Color
+  C MaybeColor
 
   // The brightness.
-  Bri *uint8
+  Bri maybe.Uint8
 
   // If true, light(s) are turned on. May be used along with G field
   // to ensure light(s) are on.
@@ -288,7 +298,7 @@ type Action struct {
   // Transition time in multiples of 100ms.
   // See http://developers.meethue.com. Right now it
   // only works with the {C, Bri, On, Off} fields
-  TransitionTime *uint16
+  TransitionTime maybe.Uint16
 
   // Sleep sleeps this duration
   Sleep time.Duration
@@ -335,7 +345,7 @@ func (a *Action) asTask(setter Setter, lights []int) tasks.Task {
       a.doGradient(setter, lights, e)
     })
   }
-  if a.C != nil || a.Bri != nil || a.On || a.Off {
+  if a.C.Valid || a.Bri.Valid || a.On || a.Off {
     return tasks.TaskFunc(func(e *tasks.Execution) {
       a.doOnOff(setter, lights, e)
     })
@@ -348,9 +358,9 @@ func (a *Action) asTask(setter Setter, lights []int) tasks.Task {
 func (a *Action) doOnOff(setter Setter, lights []int, e *tasks.Execution) {
   var properties LightProperties
   if a.On {
-    properties.On = &TrueVal
+    properties.On.Set(true)
   } else if a.Off {
-    properties.On = &FalseVal
+    properties.On.Set(false)
   }
   properties.C = a.C
   properties.Bri = a.Bri
@@ -363,7 +373,7 @@ func (a *Action) doGradient(setter Setter, lights []int, e *tasks.Execution) {
   var currentD time.Duration
   var properties LightProperties
   if a.On {
-    properties.On = &TrueVal
+    properties.On.Set(true)
   }
   idx := 1
   last := &a.G.Cds[len(a.G.Cds) - 1]
@@ -380,7 +390,7 @@ func (a *Action) doGradient(setter Setter, lights []int, e *tasks.Execution) {
     properties.C = acolor
     properties.Bri = aBrightness
     multiSet(e, setter, lights, &properties)
-    properties.On = nil
+    properties.On.Clear()
     if e.Error() != nil {
       return
     }
@@ -422,16 +432,18 @@ func multiSet(
   }
 }
 
-func maybeBlendColor(first, second *Color, ratio float64) *Color {
-  if first != nil && second != nil {
-    return ColorPtr(first.Blend(*second, ratio))
+func maybeBlendColor(first, second MaybeColor, ratio float64) MaybeColor {
+  if first.Valid && second.Valid {
+    return NewMaybeColor(first.Blend(second.Color, ratio))
   }
   return first
 }
 
-func maybeBlendBrightness(first, second *uint8, ratio float64) *uint8 {
-  if first != nil && second != nil {
-    return Uint8Ptr(uint8((1.0 - ratio) * float64(*first) + ratio * float64(*second) + 0.5))
+func maybeBlendBrightness(
+    first, second maybe.Uint8, ratio float64) maybe.Uint8 {
+  if first.Valid && second.Valid {
+    return maybe.NewUint8(
+        uint8((1.0 - ratio) * float64(first.Value) + ratio * float64(second.Value) + 0.5))
   }
   return first
 }
