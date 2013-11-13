@@ -9,6 +9,7 @@ package gohue
 import (
   "bytes"
   "encoding/json"
+  "errors"
   "fmt"
   "github.com/keep94/gohue/json_structs"
   "github.com/keep94/maybe"
@@ -25,6 +26,14 @@ var (
 
   // Dim represents the dimmest a light can be.
   Dim = uint8(0)
+)
+
+var (
+  // Indicates that the light ID is not found.
+  NoSuchResourceError = errors.New("gohue: No such resource error.")
+
+  // Indicates that some general error happened.
+  GeneralError = errors.New("gohue: General error.")
 )
 
 var (
@@ -141,6 +150,10 @@ type Context struct {
 
 // Set sets the properties of a light. lightId is the ID of the light to set.
 // 0 means all lights.
+// response is the raw response from the hue bridge or nil if communication
+// failed. This function may return both a non-nil response and an error
+// if the response from the hue bridge indicates an error. For most
+// applications, it is enough just to look at err.
 func (c *Context) Set(
     lightId int, properties *LightProperties) (response []byte, err error) {
   jsonMap := make(map[string]interface{})
@@ -181,11 +194,19 @@ func (c *Context) Set(
   if _, err = respBuffer.ReadFrom(resp.Body); err != nil {
     return
   }
-  return respBuffer.Bytes(), nil
+  response = respBuffer.Bytes()
+  err = toError(response)
+  return
 }
 
 // Get gets the properties of a light. lightId is the ID of the light.
-func (c *Context) Get(lightId int) (properties *LightProperties, err error) {
+// properties is the returned properties.
+// response is the raw response from the hue bridge or nil if communication
+// failed. This function may return both a non-nil response and an error
+// if the response from the hue bridge indicates an error. For most
+// applications, it is enough just to look at properties and err.
+func (c *Context) Get(lightId int) (
+    properties *LightProperties, response []byte, err error) {
   var url *url.URL
   if url, err = c.getLightUrl(lightId); err != nil {
     return
@@ -200,9 +221,14 @@ func (c *Context) Get(lightId int) (properties *LightProperties, err error) {
     return
   }
   defer resp.Body.Close()
-  jsonDecoder := json.NewDecoder(resp.Body)
+  var respBuffer bytes.Buffer
+  if _, err = respBuffer.ReadFrom(resp.Body); err != nil {
+    return
+  }
+  response = respBuffer.Bytes()
   var jsonProps json_structs.LightState
-  if err = jsonDecoder.Decode(&jsonProps); err != nil {
+  if err = json.Unmarshal(response, &jsonProps); err != nil {
+    err = toError(response)
     return
   }
   if jsonProps.State != nil && len(jsonProps.State.XY) == 2 {
@@ -212,6 +238,8 @@ func (c *Context) Get(lightId int) (properties *LightProperties, err error) {
         C: NewMaybeColor(NewColor(jsonColor[0], jsonColor[1])),
         Bri: maybe.NewUint8(state.Bri),
         On: maybe.NewBool(state.On)}
+  } else {
+    err = GeneralError
   }
   return
 }
@@ -418,18 +446,25 @@ func multiSet(
     lights []int,
     properties *LightProperties) {
   if len(lights) == 0 {
-    if _, err := setter.Set(0, properties); err != nil {
-      e.SetError(err)
+    if resp, err := setter.Set(0, properties); err != nil {
+      e.SetError(fixError(resp, err))
       return
     }
   } else {
     for _, light := range lights {
-      if _, err := setter.Set(light, properties); err != nil {
-        e.SetError(err)
+      if resp, err := setter.Set(light, properties); err != nil {
+        e.SetError(fixError(resp, err))
         return
       }
     }
   }
+}
+
+func fixError(rawResponse []byte, err error) error {
+  if err == GeneralError {
+    return errors.New(string(rawResponse))
+  }
+  return err
 }
 
 func maybeBlendColor(first, second MaybeColor, ratio float64) MaybeColor {
@@ -448,3 +483,16 @@ func maybeBlendBrightness(
   return first
 }
 
+func toError(rawResponse []byte) error {
+  var response []json_structs.GeneralResponse
+  if err := json.Unmarshal(rawResponse, &response); err != nil {
+    return nil
+  }
+  if len(response) > 0 && response[0].Error != nil {
+    if response[0].Error.ErrorId == 3 {
+      return NoSuchResourceError
+    }
+    return GeneralError
+  }
+  return nil
+}

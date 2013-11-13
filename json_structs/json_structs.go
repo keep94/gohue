@@ -16,3 +16,13 @@ type LightProperties struct {
   Bri uint8
   XY []float64
 }
+
+type GeneralResponse struct {
+  Error *SingleError
+}
+
+type SingleError struct {
+  ErrorId int `json:"type"`
+  Address string
+  Description string
+}
