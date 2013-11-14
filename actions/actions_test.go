@@ -233,7 +233,7 @@ func TestNoSuchLightIdError(t *testing.T) {
   if out := noSuchLightIdError.LightId; out != 2 {
     t.Errorf("Expected 2, got %d", out)
   }
-  if out := string(noSuchLightIdError.RawResponse); out != "hello" {
+  if out := noSuchLightIdError.Error(); out != "hello" {
     t.Errorf("Expected 'hello', got %s", out)
   }
 }
