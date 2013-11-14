@@ -14,6 +14,21 @@ import (
   "time"
 )
 
+// NoSuchLightIdError is the error that Task instances created from Action
+// instances report when a light ID is unknown.
+type NoSuchLightIdError struct {
+
+  // The Unknown light ID
+  LightId int
+
+  // The raw response received from the hue bridge
+  RawResponse []byte
+}
+
+func (e *NoSuchLightIdError) Error() string {
+  return string(e.RawResponse)
+}
+
 // ColorDuration specifies the color a light should be a certain duration
 // into a gradient.
 type ColorDuration struct {
@@ -194,24 +209,24 @@ func multiSet(
     properties *gohue.LightProperties) {
   if len(lights) == 0 {
     if resp, err := setter.Set(0, properties); err != nil {
-      e.SetError(fixError(resp, err))
+      e.SetError(fixError(0, resp, err))
       return
     }
   } else {
     for _, light := range lights {
       if resp, err := setter.Set(light, properties); err != nil {
-        e.SetError(fixError(resp, err))
+        e.SetError(fixError(light, resp, err))
         return
       }
     }
   }
 }
 
-func fixError(rawResponse []byte, err error) error {
-  if err == gohue.GeneralError {
-    return errors.New(string(rawResponse))
+func fixError(lightId int, rawResponse []byte, err error) error {
+  if err == gohue.NoSuchResourceError {
+    return &NoSuchLightIdError{LightId: lightId, RawResponse: rawResponse}
   }
-  return err
+  return errors.New(string(rawResponse))
 }
 
 func maybeBlendColor(first, second gohue.MaybeColor, ratio float64) gohue.MaybeColor {

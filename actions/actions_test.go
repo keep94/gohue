@@ -200,13 +200,41 @@ func TestError(t *testing.T) {
   expected := []request {
       {L: 2, On: maybe.NewBool(true),  D: 0}}
   clock := &tasks.ClockForTesting{kNow}
-  context := &setterForTesting{err: kSomeError, clock: clock, now: kNow}
-  if err := tasks.RunForTesting(
-      action.AsTask(context, nil), clock); err != kSomeError {
-    t.Error("Expected to get kSomeError.")
-  }
+  context := &setterForTesting{
+      err: kSomeError, response: ([]byte)("goodbye"), clock: clock, now: kNow}
+  err := tasks.RunForTesting(action.AsTask(context, nil), clock)
   if !reflect.DeepEqual(expected, context.requests) {
     t.Errorf("Expected %v, got %v", expected, context.requests)
+  }
+  _, isNoSuchLightIdError := err.(*actions.NoSuchLightIdError)
+  if isNoSuchLightIdError {
+    t.Error("Expected not to get NoSuchLightIdError.")
+    return
+  }
+  if out := err.Error(); out != "goodbye" {
+    t.Errorf("Expected to get 'goodbye', got %s", out)
+  }
+}
+
+func TestNoSuchLightIdError(t *testing.T) {
+  action := actions.Action{On: true}
+  clock := &tasks.ClockForTesting{kNow}
+  context := &setterForTesting{
+      err: gohue.NoSuchResourceError,
+      response: ([]byte)("hello"),
+      clock: clock,
+      now: kNow}
+  err := tasks.RunForTesting(action.AsTask(context, []int {2, 3}), clock)
+  noSuchLightIdError, isNoSuchLightIdErr := err.(*actions.NoSuchLightIdError)
+  if !isNoSuchLightIdErr {
+    t.Error("Expected a NoSuchLightIdError.")
+    return
+  }
+  if out := noSuchLightIdError.LightId; out != 2 {
+    t.Errorf("Expected 2, got %d", out)
+  }
+  if out := string(noSuchLightIdError.RawResponse); out != "hello" {
+    t.Errorf("Expected 'hello', got %s", out)
   }
 }
   
@@ -220,6 +248,7 @@ type request struct {
 
 type setterForTesting struct {
   err error
+  response []byte
   clock *tasks.ClockForTesting
   now time.Time
   requests []request
@@ -233,9 +262,8 @@ func (s *setterForTesting) Set(lightId int, p *gohue.LightProperties) (result []
   r.On = p.On
   r.D = s.clock.Current.Sub(s.now)
   s.requests = append(s.requests, r)
-  if s.err != nil {
-    err = s.err
-  }
+  err = s.err
+  result = s.response
   return
 }
 
