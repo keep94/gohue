@@ -237,7 +237,28 @@ func TestNoSuchLightIdError(t *testing.T) {
     t.Errorf("Expected 'hello', got %s", out)
   }
 }
-  
+
+func TestNoZeroLightId(t *testing.T) {
+  action := actions.Action{On: true}
+  clock := &tasks.ClockForTesting{kNow}
+  context := &setterForTesting{clock: clock, now: kNow}
+  err := tasks.RunForTesting(action.AsTask(context, []int {1, 0, 2}), clock)
+  if out := len(context.requests); out != 1 {
+    t.Errorf("Expected one request, got %d", out)
+  }
+  noSuchLightIdError, isNoSuchLightIdErr := err.(*actions.NoSuchLightIdError)
+  if !isNoSuchLightIdErr {
+    t.Error("Expected a NoSuchLightIdError.")
+    return
+  }
+  if out := noSuchLightIdError.LightId; out != 0 {
+    t.Errorf("Expected 0, got %d", out)
+  }
+  if out := noSuchLightIdError.Error(); out != "Invalid light id" {
+    t.Errorf("Expected 'Invalid light id', got %s", out)
+  }
+}
+
 type request struct {
   L int
   C gohue.MaybeColor

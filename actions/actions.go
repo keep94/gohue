@@ -14,6 +14,10 @@ import (
   "time"
 )
 
+var (
+  kInvalidLightIdBytes = ([]byte)("Invalid light id")
+)
+
 // NoSuchLightIdError is the error that Task instances created from Action
 // instances report when a light ID is unknown.
 type NoSuchLightIdError struct {
@@ -214,6 +218,10 @@ func multiSet(
     }
   } else {
     for _, light := range lights {
+      if light == 0 {
+        e.SetError(fixError(0, kInvalidLightIdBytes, gohue.NoSuchResourceError))
+        return
+      }
       if resp, err := setter.Set(light, properties); err != nil {
         e.SetError(fixError(light, resp, err))
         return
