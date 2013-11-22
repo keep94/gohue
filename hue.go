@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file or
 // at http://opensource.org/licenses/BSD-3-Clause.
 
-// Package gohue controls hue lights.
+// Package gohue controls hue lights. See http://developers.meethue.com.
 package gohue
 
 import (
@@ -59,7 +59,7 @@ type Color struct {
 }
 
 // NewColor returns a new Color. x and y are the coordinates of the color
-// in the color XY space.
+// in the color XY space. x and y are between 0.0 and 1.0 inclusive.
 func NewColor(x, y float64) Color {
   return Color{x: uint16(x * maxu16 + 0.5), y: uint16(y * maxu16 + 0.5)}
 }
@@ -94,7 +94,7 @@ type MaybeColor struct {
   Valid bool
 }
 
-// NewMaybecolor returns a new instance that represents c.
+// NewMaybeColor returns a new instance that represents c.
 func NewMaybeColor(c Color) MaybeColor {
   return MaybeColor{Color: c, Valid: true}
 }
@@ -123,16 +123,16 @@ type LightProperties struct {
   // C is the Color. Nothing means leave color as-is.
   C MaybeColor
 
-  // Bri is the brightness. nothing means leave brightness as-is.
+  // Bri is the brightness. Nothing means leave brightness as is.
   Bri maybe.Uint8
   
-  // On is true if light is on or false if it is off. If nothing,
-  // it means leave the on/off state as is.
+  // On is true if light is on or false if it is off. Nothing
+  // means leave the on/off state as is.
   On maybe.Bool
 
-  // The transition time in multiples of 100ms. See
-  // http://developers.meethue.com. Used only with Context.Set().
-  // Context.Get() does not populate
+  // The transition time in multiples of 100ms. Nothing means the default
+  // transition time. See http://developers.meethue.com.
+  // Used only with Context.Set(). Context.Get() does not populate.
   TransitionTime maybe.Uint16
 }
 

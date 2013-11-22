@@ -33,8 +33,8 @@ func (e *NoSuchLightIdError) Error() string {
   return string(e.RawResponse)
 }
 
-// ColorDuration specifies the color a light should be a certain duration
-// into a gradient.
+// ColorDuration specifies the color and/or brightness a light should have a
+// certain duration into a gradient.
 type ColorDuration struct {
 
   // The color the light should be. nothing menas color should be unchanged.
@@ -54,7 +54,7 @@ type Setter interface {
   Set(lightId int, properties *gohue.LightProperties) (response []byte, err error)
 }
 
-// Gradient represents a change in colors over time.
+// Gradient represents a change in colors and/or brightness over time.
 type Gradient struct {
 
   // The desired color at certain durations into the gradient. The specified
@@ -97,8 +97,8 @@ type Action struct {
   // If true, light(s) are turned off.
   Off bool
 
-  // Transition time in multiples of 100ms.
-  // See http://developers.meethue.com. Right now it
+  // Transition time in multiples of 100ms. Nothing means default transition
+  // time. See http://developers.meethue.com. Right now it
   // only works with the {C, Bri, On, Off} fields
   TransitionTime maybe.Uint16
 
