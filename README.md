@@ -3,8 +3,8 @@ gohue
 
 Hue lighting API implemented in Go.
 
-This is a draft API and should be treated as such. It may change in
-incompatible ways.
+This API is stable. Newly added API that is not yet stable will be clearly
+marked as draft API.
 
 ## Using
 
