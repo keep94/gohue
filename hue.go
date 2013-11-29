@@ -138,12 +138,21 @@ type LightProperties struct {
 
 // Context represents a connection with a hue bridge.
 type Context struct {
+  ipAddress string
+  userId string
+  allUrl *url.URL
+}
 
-  // The userId / developer Id. See hue documentation.
-  UserId string
-
-  // The private ip address of the hue bridge.
-  IpAddress string
+// NewContext creates a new Context instance. ipAddress is the private ip
+// address of the hue bridge, but could be a DNS name.
+// UserId is the user Id / developer Id (See hue documentation).
+func NewContext(ipAddress, userId string) *Context {
+  allUrl := &url.URL{
+      Scheme: "http",
+      Host: ipAddress,
+      Path: fmt.Sprintf("/api/%s/groups/0/action", userId),
+  }
+  return &Context{ipAddress: ipAddress, userId: userId, allUrl: allUrl}
 }
 
 // Set sets the properties of a light. lightId is the ID of the light to set.
@@ -237,27 +246,19 @@ func (c *Context) Get(lightId int) (
 func (c *Context) getLightUrl(id int) *url.URL {
   return &url.URL{
       Scheme: "http",
-      Host: c.IpAddress,
-      Path: fmt.Sprintf("/api/%s/lights/%d", c.UserId, id),
+      Host: c.ipAddress,
+      Path: fmt.Sprintf("/api/%s/lights/%d", c.userId, id),
   }
 }
 
 func (c *Context) lightUrl(id int) *url.URL {
   if id == 0 {
-    return c.allUrl()
+    return c.allUrl
   }
   return &url.URL{
       Scheme: "http",
-      Host: c.IpAddress,
-      Path: fmt.Sprintf("/api/%s/lights/%d/state", c.UserId, id),
-  }
-}
-
-func (c *Context) allUrl() *url.URL {
-  return &url.URL{
-      Scheme: "http",
-      Host: c.IpAddress,
-      Path: fmt.Sprintf("/api/%s/groups/0/action", c.UserId),
+      Host: c.ipAddress,
+      Path: fmt.Sprintf("/api/%s/lights/%d/state", c.userId, id),
   }
 }
 
