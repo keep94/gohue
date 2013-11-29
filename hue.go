@@ -172,13 +172,9 @@ func (c *Context) Set(
   if reqBuffer, err = json.Marshal(jsonMap); err != nil {
     return
   }
-  var url *url.URL
-  if url, err = c.lightUrl(lightId); err != nil {
-    return
-  }
   request := &http.Request{
       Method: "PUT",
-      URL: url,
+      URL: c.lightUrl(lightId),
       ContentLength: int64(len(reqBuffer)),
       Body: simpleReadCloser{bytes.NewReader(reqBuffer)},
   }
@@ -205,13 +201,9 @@ func (c *Context) Set(
 // applications, it is enough just to look at properties and err.
 func (c *Context) Get(lightId int) (
     properties *LightProperties, response []byte, err error) {
-  var url *url.URL
-  if url, err = c.getLightUrl(lightId); err != nil {
-    return
-  }
   request := &http.Request{
       Method: "GET",
-      URL: url,
+      URL: c.getLightUrl(lightId),
   }
   var client http.Client
   var resp *http.Response
@@ -242,19 +234,31 @@ func (c *Context) Get(lightId int) (
   return
 }
 
-func (c *Context) getLightUrl(id int) (*url.URL, error) {
-  return url.Parse(fmt.Sprintf("http://%s/api/%s/lights/%d", c.IpAddress, c.UserId, id))
+func (c *Context) getLightUrl(id int) *url.URL {
+  return &url.URL{
+      Scheme: "http",
+      Host: c.IpAddress,
+      Path: fmt.Sprintf("/api/%s/lights/%d", c.UserId, id),
+  }
 }
 
-func (c *Context) lightUrl(id int) (*url.URL, error) {
+func (c *Context) lightUrl(id int) *url.URL {
   if id == 0 {
     return c.allUrl()
   }
-  return url.Parse(fmt.Sprintf("http://%s/api/%s/lights/%d/state", c.IpAddress, c.UserId, id))
+  return &url.URL{
+      Scheme: "http",
+      Host: c.IpAddress,
+      Path: fmt.Sprintf("/api/%s/lights/%d/state", c.UserId, id),
+  }
 }
 
-func (c *Context) allUrl() (*url.URL, error) {
-  return url.Parse(fmt.Sprintf("http://%s/api/%s/groups/0/action", c.IpAddress, c.UserId))
+func (c *Context) allUrl() *url.URL {
+  return &url.URL{
+      Scheme: "http",
+      Host: c.IpAddress,
+      Path: fmt.Sprintf("/api/%s/groups/0/action", c.UserId),
+  }
 }
 
 type simpleReadCloser struct {
