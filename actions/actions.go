@@ -114,6 +114,9 @@ type Action struct {
 
 // AsTask returns a Task from this instance. setter is what changes the
 // lightbulb. lights is the default set of lights empty means all lights.
+// The returned Task does not get its own deep copy of this instance. The
+// results of using it after making further changes to this instance are
+// undefined.
 func (a *Action) AsTask(setter Setter, lights []int) tasks.Task {
   if a.Repeat < 2 {
     return a.asTask(setter, lights)
