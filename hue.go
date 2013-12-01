@@ -145,7 +145,7 @@ type Context struct {
 
 // NewContext creates a new Context instance. ipAddress is the private ip
 // address of the hue bridge, but could be a DNS name.
-// UserId is the user Id / developer Id (See hue documentation).
+// userId is the user Id / developer Id (See hue documentation).
 func NewContext(ipAddress, userId string) *Context {
   allUrl := &url.URL{
       Scheme: "http",
