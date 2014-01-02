@@ -237,7 +237,10 @@ func fixError(lightId int, rawResponse []byte, err error) error {
   if err == gohue.NoSuchResourceError {
     return &NoSuchLightIdError{LightId: lightId, RawResponse: rawResponse}
   }
-  return errors.New(string(rawResponse))
+  if len(rawResponse) > 0 {
+    return errors.New(string(rawResponse))
+  }
+  return err
 }
 
 func maybeBlendColor(first, second gohue.MaybeColor, ratio float64) gohue.MaybeColor {
