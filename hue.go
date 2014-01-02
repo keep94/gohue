@@ -14,8 +14,10 @@ import (
   "github.com/keep94/gohue/json_structs"
   "github.com/keep94/maybe"
   "io"
+  "net"
   "net/http"
   "net/url"
+  "time"
 )
 
 var (
@@ -49,6 +51,10 @@ var (
 
 const (
   maxu16 = float64(10000.0)
+)
+
+var (
+  kDefaultOptions = &Options{}
 )
 
 // Color represents a particular color. Programs using Colors
@@ -141,18 +147,49 @@ type Context struct {
   ipAddress string
   userId string
   allUrl *url.URL
+  client *http.Client
+}
+
+// Options contains optional settings for Context instance creation.
+// This struct is draft API and may change in incompatible ways.
+type Options struct {
+  // Operations that take longer than this will fail with an error.
+  // Zero or negative values means no timeout specified.
+  Timeout time.Duration
 }
 
 // NewContext creates a new Context instance. ipAddress is the private ip
 // address of the hue bridge, but could be a DNS name.
 // userId is the user Id / developer Id (See hue documentation).
 func NewContext(ipAddress, userId string) *Context {
+  return NewContextWithOptions(ipAddress, userId, nil)
+}
+
+// NewContextWithOptions creates a new Context instance.
+// This function is draft API and may change in incompatible ways.
+// ipAddress is the private ip address of the hue bridge, but could be a
+// DNS name.
+// userId is the user Id / developer Id (See hue documentation).
+// options contains optional settings for the created context.
+func NewContextWithOptions(
+    ipAddress, userId string, options *Options) *Context {
+  if options == nil {
+    options = kDefaultOptions
+  }
   allUrl := &url.URL{
       Scheme: "http",
       Host: ipAddress,
       Path: fmt.Sprintf("/api/%s/groups/0/action", userId),
   }
-  return &Context{ipAddress: ipAddress, userId: userId, allUrl: allUrl}
+  var client http.Client
+  if options.Timeout > 0 {
+    client.Transport = &http.Transport{Dial: timeoutDialer(options.Timeout)}
+  }
+  return &Context{
+      ipAddress: ipAddress,
+      userId: userId,
+      allUrl: allUrl,
+      client: &client}
 }
 
 // Set sets the properties of a light. lightId is the ID of the light to set.
@@ -187,7 +224,7 @@ func (c *Context) Set(
       ContentLength: int64(len(reqBuffer)),
       Body: simpleReadCloser{bytes.NewReader(reqBuffer)},
   }
-  var client http.Client
+  client := c.client
   var resp *http.Response
   if resp, err = client.Do(request); err != nil {
     return
@@ -214,7 +251,7 @@ func (c *Context) Get(lightId int) (
       Method: "GET",
       URL: c.getLightUrl(lightId),
   }
-  var client http.Client
+  client := c.client
   var resp *http.Response
   if resp, err = client.Do(request); err != nil {
     return
@@ -268,6 +305,19 @@ type simpleReadCloser struct {
 
 func (s simpleReadCloser) Close() error {
   return nil
+}
+
+func timeoutDialer(
+    timeout time.Duration) func(net, addr string) (net.Conn, error) {
+  return func(netw, addr string) (net.Conn, error) {
+    deadline := time.Now().Add(timeout)
+    conn, err := net.DialTimeout(netw, addr, timeout)
+    if err != nil {
+      return nil, err
+    }
+    conn.SetDeadline(deadline)
+    return conn, nil
+  }
 }
 
 func toError(rawResponse []byte) error {
