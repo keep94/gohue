@@ -151,7 +151,6 @@ type Context struct {
 }
 
 // Options contains optional settings for Context instance creation.
-// This struct is draft API and may change in incompatible ways.
 type Options struct {
   // Operations that take longer than this will fail with an error.
   // Zero or negative values means no timeout specified.
@@ -166,7 +165,6 @@ func NewContext(ipAddress, userId string) *Context {
 }
 
 // NewContextWithOptions creates a new Context instance.
-// This function is draft API and may change in incompatible ways.
 // ipAddress is the private ip address of the hue bridge, but could be a
 // DNS name.
 // userId is the user Id / developer Id (See hue documentation).
