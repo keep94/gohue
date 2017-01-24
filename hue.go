@@ -265,11 +265,15 @@ func (c *Context) Get(lightId int) (
     err = toError(response)
     return
   }
-  if jsonProps.State != nil && len(jsonProps.State.XY) == 2 {
+  if jsonProps.State != nil {
     state := jsonProps.State
-    jsonColor := state.XY
+    color := MaybeColor{Valid: false, Color: White}
+    if len(jsonProps.State.XY) == 2 {
+      jsonColor := state.XY
+      color = NewMaybeColor(NewColor(jsonColor[0], jsonColor[1]))
+    }
     properties = &LightProperties{
-        C: NewMaybeColor(NewColor(jsonColor[0], jsonColor[1])),
+        C: color,
         Bri: maybe.NewUint8(state.Bri),
         On: maybe.NewBool(state.On)}
   } else {
