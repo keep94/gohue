@@ -8,21 +8,21 @@
 package json_structs
 
 type LightState struct {
-  State *LightProperties
+	State *LightProperties
 }
 
 type LightProperties struct {
-  On bool
-  Bri uint8
-  XY []float64
+	On  bool
+	Bri uint8
+	XY  []float64
 }
 
 type GeneralResponse struct {
-  Error *SingleError
+	Error *SingleError
 }
 
 type SingleError struct {
-  ErrorId int `json:"type"`
-  Address string
-  Description string
+	ErrorId     int `json:"type"`
+	Address     string
+	Description string
 }
