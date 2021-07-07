@@ -1,8 +1,14 @@
 github.com/keep94/common v1.0.0 h1:hX4MySTB6EidCCxDjcwbCmq56xjQAasTpCEY6eBxlCA=
 github.com/keep94/common v1.0.0/go.mod h1:EntqjOWDwp8pluIIK921uIKHuHXbbv/odR/yz+YZf3M=
+github.com/keep94/common v1.0.1 h1:C2/fluO5iy1PJMugMFlwr9Hahjklg6AzTOnmgRQ0K9I=
+github.com/keep94/common v1.0.1/go.mod h1:EntqjOWDwp8pluIIK921uIKHuHXbbv/odR/yz+YZf3M=
 github.com/keep94/gofunctional3 v1.0.0 h1:1OccHeUS6m0r/5CxdfWLgffLsytppVny9KuXyD3n9gY=
 github.com/keep94/gofunctional3 v1.0.0/go.mod h1:rImP7wOgyBnOls7RQzR60luYfyR4Efrl4U96K8BJlRQ=
+github.com/keep94/gofunctional3 v1.0.2 h1:yC3YZegvDypG9awmpd7B1bCzUFenv6KHbzTLl1d2Na4=
+github.com/keep94/gofunctional3 v1.0.2/go.mod h1:+WzYLYUYOlZUKLxiVqanGW7FLpto7M1hYJwh16QavkM=
 github.com/keep94/maybe v1.0.0 h1:qaYZ9zIT2CYss8UkvhwcmkIoX2TMyXKZ3KAZn045m9Y=
 github.com/keep94/maybe v1.0.0/go.mod h1:rvzi5R3Pfv+iZiAZCL+Nm9HWoNQrVOeQTH8HdZq9lTI=
 github.com/keep94/tasks v1.0.0 h1:ZCJc7GzKUphrYpcO+6oIjvKtV1yQ7XNUAC8HT2JrA3o=
 github.com/keep94/tasks v1.0.0/go.mod h1:aiOCT4ER6+6s5MX4EoTV5VFKw3f2jDUCNljpHntxmKw=
+github.com/keep94/tasks v1.0.1 h1:6GcAIHhBWWyHFBsmM7AE2FUmsvwzLZDkMSlCJUGa+YM=
+github.com/keep94/tasks v1.0.1/go.mod h1:OvF9dKzG8NhhIzAp42YLoYUZhsXS/HTqYvPUHLxNK3w=

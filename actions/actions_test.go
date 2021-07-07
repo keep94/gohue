@@ -199,7 +199,7 @@ func TestError(t *testing.T) {
 			{Off: true}}}
 	expected := []request{
 		{L: 2, On: maybe.NewBool(true), D: 0}}
-	clock := &tasks.ClockForTesting{kNow}
+	clock := &tasks.ClockForTesting{Current: kNow}
 	context := &setterForTesting{
 		err: kSomeError, response: ([]byte)("goodbye"), clock: clock, now: kNow}
 	err := tasks.RunForTesting(action.AsTask(context, nil), clock)
@@ -218,7 +218,7 @@ func TestError(t *testing.T) {
 
 func TestNoSuchLightIdError(t *testing.T) {
 	action := actions.Action{On: true}
-	clock := &tasks.ClockForTesting{kNow}
+	clock := &tasks.ClockForTesting{Current: kNow}
 	context := &setterForTesting{
 		err:      gohue.NoSuchResourceError,
 		response: ([]byte)("hello"),
@@ -240,7 +240,7 @@ func TestNoSuchLightIdError(t *testing.T) {
 
 func TestNoZeroLightId(t *testing.T) {
 	action := actions.Action{On: true}
-	clock := &tasks.ClockForTesting{kNow}
+	clock := &tasks.ClockForTesting{Current: kNow}
 	context := &setterForTesting{clock: clock, now: kNow}
 	err := tasks.RunForTesting(action.AsTask(context, []int{1, 0, 2}), clock)
 	if out := len(context.requests); out != 1 {
@@ -289,7 +289,7 @@ func (s *setterForTesting) Set(lightId int, p *gohue.LightProperties) (result []
 }
 
 func verifyAction(t *testing.T, expected []request, action actions.Action) {
-	clock := &tasks.ClockForTesting{kNow}
+	clock := &tasks.ClockForTesting{Current: kNow}
 	context := &setterForTesting{clock: clock, now: kNow}
 	tasks.RunForTesting(action.AsTask(context, nil), clock)
 	if !reflect.DeepEqual(expected, context.requests) {
